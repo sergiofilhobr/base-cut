@@ -9,7 +9,7 @@ import { fadeUpVariants, delayedFade } from '@/app/lib/motion'
  * Link do grupo de WhatsApp do Base Run Club.
  * Substituir pelo link real antes de publicar.
  */
-const WHATSAPP_GROUP_URL = '#'
+const WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/Drn8xiZJRrM5LLQKLo85ZC'
 
 const STATS = [
   { icon: Timer,       label: 'Distância',      value: '3 – 5 km' },
