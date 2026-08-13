@@ -1,11 +1,29 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Archivo, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from './components/providers'
+import { Navbar } from './components/layout/navbar'
+import { Footer } from './components/layout/footer'
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+})
+
+/** Display: grotesk pesado em caixa alta — a voz do deck do Base Run. */
+const archivo = Archivo({
+  subsets: ['latin'],
+  weight: ['700', '800', '900'],
+  variable: '--font-archivo',
+  display: 'swap',
+})
+
+/** Mono: eyebrows e contadores de capítulo. */
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-jetbrains',
   display: 'swap',
 })
 
@@ -32,9 +50,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
-      <body className="bg-neutral-50 dark:bg-[#0a0a0a] text-neutral-900 dark:text-neutral-50 antialiased transition-colors duration-300">
-        <Providers>{children}</Providers>
+    <html
+      lang="pt-BR"
+      className={`${inter.variable} ${archivo.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="bg-paper text-ink antialiased transition-colors duration-300">
+        <Providers>
+          <Navbar />
+          <main className="overflow-x-hidden">{children}</main>
+          <Footer />
+        </Providers>
       </body>
     </html>
   )

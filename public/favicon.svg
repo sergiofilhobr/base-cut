@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <!-- Background circle -->
+  <!-- Fundo -->
   <circle cx="16" cy="16" r="16" fill="#0a0a0a"/>
 
-  <!-- Scissors blades -->
-  <!-- Blade 1: top-left to bottom-right -->
-  <line x1="8" y1="8" x2="24" y2="24" stroke="#c9a96e" stroke-width="2.2" stroke-linecap="round"/>
-  <!-- Blade 2: bottom-left to top-right -->
-  <line x1="8" y1="24" x2="24" y2="8" stroke="#c9a96e" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Cabo: haste fina do pino até o cotovelo -->
+  <line
+    x1="6.6" y1="15.4" x2="12" y2="20.4"
+    stroke="#fafafa" stroke-width="1.9" stroke-linecap="round"
+  />
 
-  <!-- Pivot screw at center -->
-  <circle cx="16" cy="16" r="1.8" fill="#c9a96e"/>
+  <!-- Pino do pivô -->
+  <circle cx="6.6" cy="15.4" r="1.6" fill="#fafafa"/>
 
-  <!-- Handle rings — top-left -->
-  <circle cx="8.5" cy="8.5" r="3.2" stroke="#c9a96e" stroke-width="1.8" fill="none"/>
-  <!-- Handle rings — bottom-left -->
-  <circle cx="8.5" cy="23.5" r="3.2" stroke="#c9a96e" stroke-width="1.8" fill="none"/>
+  <!-- Lâmina: aberta em diagonal, pontas retas -->
+  <polygon
+    points="11.26,19.03 24.70,8.35 27.30,11.65 13.74,22.17"
+    fill="#fafafa" stroke="#fafafa" stroke-width="1.2" stroke-linejoin="round"
+  />
 </svg>

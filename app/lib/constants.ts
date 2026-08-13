@@ -7,6 +7,14 @@ export const BOOKSY_URL =
 export const GOOGLE_REVIEW_URL =
   'https://www.google.com/search?kgmid=/g/11n3q826nd&hl=pt-BR&q=BASE+CUT+BARBEARIA&shndl=30&source=sh/x/loc/osrp/m1/3&kgs=c1b96cf83428199a&shem=shrtsdl&utm_source=shrtsdl,sh/x/loc/osrp/m1/3'
 
+/** Rotas do site — usadas pela navbar e pelo footer. */
+export const NAV_LINKS = [
+  { href: '/servicos', label: 'Serviços' },
+  { href: '/sobre', label: 'A Experiência' },
+  { href: '/run-club', label: 'Run Club' },
+  { href: '/contato', label: 'Contato' },
+] as const
+
 export interface Service {
   id: string
   icon: LucideIcon

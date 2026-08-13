@@ -17,7 +17,7 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <div
-        className="w-9 h-9 rounded-full border border-neutral-200 dark:border-neutral-800"
+        className="w-9 h-9 rounded-full border border-rule"
         aria-hidden="true"
       />
     )
@@ -32,9 +32,9 @@ export function ThemeToggle() {
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className="
         relative w-9 h-9 rounded-full flex items-center justify-center
-        border border-neutral-200 dark:border-neutral-800
-        bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800
-        text-neutral-700 dark:text-neutral-300
+        border border-rule
+        bg-transparent hover:bg-surface
+        text-muted
         transition-all duration-300 ease-in-out
         cursor-pointer
       "

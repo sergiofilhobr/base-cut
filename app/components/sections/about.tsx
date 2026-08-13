@@ -14,20 +14,20 @@ export function About() {
       id="sobre"
       className="
         relative py-28 px-6
-        bg-white dark:bg-neutral-950
-        border-y border-neutral-100 dark:border-neutral-900
+        bg-surface
+        border-y border-rule
       "
     >
       {/* Golden top rule */}
       <div
         aria-hidden="true"
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-px bg-[#c9a96e]"
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-px bg-ink"
       />
 
       <div className="max-w-3xl mx-auto text-center">
         <motion.p
           variants={fadeUpVariants}
-          className="mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-[#c9a96e]"
+          className="mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-muted"
         >
           A Experiência
         </motion.p>
@@ -37,13 +37,13 @@ export function About() {
           className="
             text-3xl sm:text-4xl md:text-5xl
             font-black tracking-tight leading-tight
-            text-neutral-900 dark:text-neutral-50
+            text-ink
             mb-8
           "
         >
           TODO CORTE
           <br />
-          <span className="font-light text-neutral-400 dark:text-neutral-600">
+          <span className="font-light text-muted">
             COMEÇA PELA BASE
           </span>
         </motion.h2>
@@ -52,12 +52,12 @@ export function About() {
           variants={fadeUpVariants}
           className="
             text-base sm:text-lg leading-relaxed
-            text-neutral-600 dark:text-neutral-400
+            text-muted
             max-w-xl mx-auto
           "
         >
           Entregamos mais do que um corte: uma{' '}
-          <span className="text-neutral-900 dark:text-neutral-200 font-medium">
+          <span className="text-ink font-medium">
             experiência de alto padrão
           </span>
           , do começo ao fim.
@@ -68,9 +68,9 @@ export function About() {
           variants={fadeUpVariants}
           className="mt-12 flex items-center justify-center gap-4"
         >
-          <div className="h-px w-16 bg-neutral-200 dark:bg-neutral-800" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[#c9a96e]" />
-          <div className="h-px w-16 bg-neutral-200 dark:bg-neutral-800" />
+          <div className="h-px w-16 bg-rule" />
+          <div className="w-1.5 h-1.5 rounded-full bg-ink" />
+          <div className="h-px w-16 bg-rule" />
         </motion.div>
       </div>
     </AnimatedSection>

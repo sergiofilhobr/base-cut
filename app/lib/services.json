@@ -1,0 +1,45 @@
+{
+  "category": "Outros",
+  "services": [
+    {
+      "name": "CORTE",
+      "price": 50.00,
+      "duration": "45min"
+    },
+    {
+      "name": "CABELO+SOBRANCELHA",
+      "price": 60.00,
+      "duration": "45min"
+    },
+    {
+      "name": "CORTE + BARBA",
+      "price": 80.00,
+      "duration": "1h"
+    },
+    {
+      "name": "CABELO + BARBA + SOBRANCELHA",
+      "price": 85.00,
+      "duration": "1h"
+    },
+    {
+      "name": "BARBA",
+      "price": 45.00,
+      "duration": "45min"
+    },
+    {
+      "name": "SOBRANCELHA",
+      "price": 10.00,
+      "duration": "10min"
+    },
+    {
+      "name": "HIDRATAÇÃO",
+      "price": 25.00,
+      "duration": "20min"
+    },
+    {
+      "name": "Depilação nasal / orelha",
+      "price": 20.00,
+      "duration": "10min"
+    }
+  ]
+}
