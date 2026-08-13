@@ -1,27 +1,27 @@
-import type { Variants, Transition } from 'framer-motion'
+import type { SpringConfig } from '@react-spring/web'
 
-export const smoothTransition: Transition = {
-  duration: 0.65,
-  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+/** Mola equivalente ao easeOut cúbico do sistema (~0.65s). */
+export const SMOOTH_CONFIG: SpringConfig = {
+  tension: 170,
+  friction: 26,
+  clamp: true,
 }
 
-export const fadeUpVariants: Variants = {
-  hidden: { opacity: 0, y: 32 },
-  visible: { opacity: 1, y: 0, transition: smoothTransition },
+/** Entrada padrão: sobe 32px enquanto some o fade. */
+export const FADE_UP = {
+  from: { opacity: 0, y: 32 },
+  to: { opacity: 1, y: 0 },
 }
 
-export const staggerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.15 } },
+/** Fallback de `prefers-reduced-motion`: só opacidade, sem deslocamento. */
+export const FADE_ONLY = {
+  from: { opacity: 0 },
+  to: { opacity: 1 },
 }
 
-export function delayedFade(delay: number): Variants {
-  return {
-    hidden: { opacity: 0, y: 32 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { ...smoothTransition, delay } as Transition,
-    },
-  }
+export function fadeUp(reduce: boolean | null) {
+  return reduce ? FADE_ONLY : FADE_UP
 }
+
+/** Atraso em ms entre itens de uma lista em cascata. */
+export const STAGGER_MS = 150

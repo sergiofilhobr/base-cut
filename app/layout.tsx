@@ -55,10 +55,12 @@ export default function RootLayout({
       className={`${inter.variable} ${archivo.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="bg-paper text-ink antialiased transition-colors duration-300">
+      <body className="bg-paper text-ink antialiased transition-colors duration-300 min-h-dvh flex flex-col">
         <Providers>
           <Navbar />
-          <main className="overflow-x-hidden">{children}</main>
+          {/* min-h-dvh + flex-1: o main sempre preenche o espaço entre navbar e
+              footer, então toda página tem a mesma altura mínima. */}
+          <main className="relative flex-1 overflow-x-hidden">{children}</main>
           <Footer />
         </Providers>
       </body>

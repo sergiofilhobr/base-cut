@@ -1,119 +1,158 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { AnimatedSection } from '@/app/components/ui/animated-section'
-import { fadeUpVariants } from '@/app/lib/motion'
-import { GOOGLE_REVIEW_URL } from '@/app/lib/constants'
+/* Hallmark · genre: editorial · macrostructure: Catalogue
+ * design-system: design.md · designed-as-app
+ */
+
+import { useState } from 'react'
+import { animated, useInView, useReducedMotion, useTrail } from '@react-spring/web'
+import { SMOOTH_CONFIG } from '@/app/lib/motion'
+import { GOOGLE_MAPS_URL, GOOGLE_REVIEW_URL } from '@/app/lib/constants'
+import { REVIEWS } from '@/app/lib/reviews'
+
+/** Quantas avaliações aparecem antes do "ver mais" — o resto é revelado sob pedido. */
+const VISIBLE_COUNT = 3
+
+/** Estrelas em tinta — a paleta não tem dourado, o brilho fica por conta do peso. */
+function Stars({ n }: { n: number }) {
+  return (
+    <p role="img" aria-label={`${n} de 5 estrelas`} className="text-sm text-ink">
+      <span aria-hidden="true" className="tracking-[0.25em]">
+        {'★'.repeat(n)}
+      </span>
+    </p>
+  )
+}
 
 /**
- * GoogleReview Section — social proof com 5 estrelas e link para avaliação.
- * Client Component por usar motion.
+ * GoogleReview — o que os Base Members dizem da casa + convite para avaliar.
+ *
+ * Vive na coluna direita de /contato, ao lado do mapa. Só as três primeiras
+ * avaliações entram na dobra — o resto fica atrás de "ver mais avaliações",
+ * pra não transformar a página inteira num scroll só de citações.
+ *
+ * As estrelas vêm em tinta, nunca em dourado: a paleta não tem acento
+ * cromático. O link "Ver todas" abre a ficha real no Google Maps, onde a
+ * nota é auditável.
+ *
+ * A lista entra em cascata ao cruzar a dobra — exceção declarada à regra de
+ * "uma entrada animada só" (design.md § Motion). Com `prefers-reduced-motion`
+ * a cascata colapsa para opacidade em 150ms.
  */
 export function GoogleReview() {
+  const reduce = useReducedMotion()
+  const [ref, inView] = useInView({ once: true, amount: 0.2 })
+  const [expanded, setExpanded] = useState(false)
+
+  const visible = expanded ? REVIEWS : REVIEWS.slice(0, VISIBLE_COUNT)
+  const hiddenCount = REVIEWS.length - VISIBLE_COUNT
+
+  const from = reduce ? { opacity: 0 } : { opacity: 0, y: 32 }
+  const to = reduce ? { opacity: 1 } : { opacity: 1, y: 0 }
+
+  const trail = useTrail(visible.length, {
+    from,
+    to: inView ? to : from,
+    config: reduce ? { duration: 150 } : SMOOTH_CONFIG,
+  })
+
   return (
-    <AnimatedSection
-      id="avaliacao"
-      className="py-20 px-6 bg-surface"
-    >
-      <div className="max-w-5xl mx-auto">
-        <motion.a
-          variants={fadeUpVariants}
-          id="google-review-card"
-          href={GOOGLE_REVIEW_URL}
+    <div id="avaliacao">
+      <h2
+        className="
+          font-display font-black uppercase text-ink
+          text-2xl sm:text-3xl
+          tracking-tight
+        "
+      >
+        Sua satisfação <span className="text-muted">é a nossa base.</span>
+      </h2>
+
+      <div ref={ref} className="mt-6 divide-y divide-rule border-y border-rule">
+        {REVIEWS.length > 0
+          ? trail.map((style, i) => {
+              const { quote, author, stars } = visible[i]
+              return (
+                <animated.figure key={author} className="py-4" style={style}>
+                  <Stars n={stars} />
+                  <blockquote className="mt-2 text-sm sm:text-base leading-relaxed text-ink">
+                    “{quote}”
+                  </blockquote>
+                  <figcaption className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                    {author} — Base Member
+                  </figcaption>
+                </animated.figure>
+              )
+            })
+          : [1, 2, 3].map((n) => (
+              <div key={n} className="py-4">
+                {/* Slot de avaliação — colar a citação real em REVIEWS */}
+                <div className="border border-dashed border-muted/50 px-6 py-8 flex items-center justify-center">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted">
+                    Avaliação {String(n).padStart(2, '0')} — a inserir
+                  </span>
+                </div>
+              </div>
+            ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="
+              text-sm text-ink
+              border-b border-ink pb-0.5
+              hover:opacity-70
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+              focus-visible:outline-ink
+              transition-opacity duration-200
+            "
+          >
+            {expanded ? 'Ver menos' : `Ver mais avaliações (+${hiddenCount})`}
+          </button>
+        )}
+
+        <a
+          href={GOOGLE_MAPS_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="
-            group block w-full
-            border border-rule
-            hover:border-rule dark:hover:border-rule
-            rounded-2xl p-8 sm:p-10
-            bg-paper
-            hover:bg-surface
-            transition-all duration-300
+            text-sm text-ink
+            border-b border-ink pb-0.5
+            hover:opacity-70
+            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+            focus-visible:outline-ink
+            transition-opacity duration-200
           "
         >
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
-            {/* Google logo */}
-            <div className="shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-surface border border-rule shadow-sm">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-            </div>
-
-            {/* Text content */}
-            <div className="flex-1 text-center sm:text-left">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted mb-3">
-                Avaliação no Google
-              </p>
-
-              {/* 5 Stars */}
-              <div
-                className="flex items-center justify-center sm:justify-start gap-1 mb-4"
-                aria-label="5 estrelas"
-              >
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <svg
-                    key={i}
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                    className="text-muted"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-                <span className="ml-1 text-sm font-semibold text-muted">
-                  5.0
-                </span>
-              </div>
-
-              <p className="text-base sm:text-lg font-medium text-muted leading-relaxed">
-                Sua satisfação é a nossa base.{' '}
-                <span className="text-ink font-semibold">
-                  Avalie sua experiência.
-                </span>
-              </p>
-            </div>
-
-            {/* Arrow CTA */}
-            <div className="hidden sm:flex items-center self-center">
-              <div
-                className="
-                  w-10 h-10 rounded-full flex items-center justify-center
-                  border border-rule
-                  group-hover:border-rule dark:group-hover:border-rule
-                  group-hover:bg-surface
-                  text-muted
-                  group-hover:text-ink
-                  transition-all duration-300
-                "
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path
-                    d="M3 8h10M9 4l4 4-4 4"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </motion.a>
+          Ver todas no Google
+        </a>
       </div>
-    </AnimatedSection>
+
+      <p className="mt-6 text-sm sm:text-base leading-relaxed text-muted">
+        Cortou com a gente? Conta como foi — é o que ajuda quem ainda não
+        conhece a casa a decidir.
+      </p>
+
+      <a
+        id="google-review-card"
+        href={GOOGLE_REVIEW_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          mt-6 inline-flex items-center px-8 py-4
+          font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
+          bg-ink text-paper
+          hover:opacity-90
+          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+          focus-visible:outline-ink
+          transition-opacity duration-200
+        "
+      >
+        Avaliar no Google
+      </a>
+    </div>
   )
 }

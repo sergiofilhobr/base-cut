@@ -1,5 +1,9 @@
+'use client'
+
 import type { ReactNode } from 'react'
-import { Carousel } from '@/app/components/ui/carousel'
+import { animated, useReducedMotion, useSpring } from '@react-spring/web'
+import { Carousel, useCarouselActive } from '@/app/components/ui/carousel'
+import { SMOOTH_CONFIG } from '@/app/lib/motion'
 
 /**
  * Link do grupo de WhatsApp do Base Run Club.
@@ -19,15 +23,33 @@ const STEPS = [
   'Convide um amigo',
 ]
 
+/**
+ * Capítulo do deck. Sabe seu próprio índice e compara com o índice ativo do
+ * Carousel (via contexto): o capítulo em foco sobe e ganha opacidade cheia,
+ * os vizinhos ficam discretamente recuados — a mesma mola do resto do
+ * sistema, aqui reagindo à navegação em vez do scroll.
+ */
 function Chapter({
+  index,
   label,
   children,
   className = '',
 }: {
+  index: number
   label: string
   children: ReactNode
   className?: string
 }) {
+  const active = useCarouselActive()
+  const reduce = useReducedMotion()
+  const isActive = active === index
+
+  const style = useSpring({
+    opacity: isActive ? 1 : 0.35,
+    y: isActive ? 0 : 16,
+    config: reduce ? { duration: 200 } : SMOOTH_CONFIG,
+  })
+
   return (
     <section
       /* w-full + justify-center: o slide é esticado até a altura do mais alto,
@@ -35,13 +57,13 @@ function Chapter({
          em vez de despencar tudo abaixo do texto. */
       className={`w-full flex flex-col justify-center px-6 sm:px-10 py-10 sm:py-12 ${className}`}
     >
-      <div className="max-w-4xl w-full mx-auto">
+      <animated.div style={style} className="max-w-4xl w-full mx-auto">
         {/* Eyebrow em mono; o título vem embaixo, na mesma coluna. */}
         <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-[var(--ink)] mb-8 sm:mb-10">
           {label}
         </p>
         {children}
-      </div>
+      </animated.div>
     </section>
   )
 }
@@ -65,7 +87,9 @@ function Display({ children }: { children: ReactNode }) {
 
 /**
  * Base Run — deck de 5 capítulos.
- * Server Component: sem motion, sem fade-on-scroll. O conteúdo simplesmente está lá.
+ * Client Component: cada capítulo anima com a mola do react-spring conforme
+ * ganha ou perde foco no carrossel (design.md § Motion — exceção declarada,
+ * como a cascata de /contato e /galeria).
  */
 export function RunClub() {
   return (
@@ -75,7 +99,7 @@ export function RunClub() {
     >
       <Carousel label="Base Run — capítulos">
       {/* 01 — Abertura */}
-      <Chapter label="Base Run">
+      <Chapter index={0} label="Base Run">
         <Display>
           Corrida,
           <br />
@@ -90,7 +114,7 @@ export function RunClub() {
       </Chapter>
 
       {/* 02 — A proposta */}
-      <Chapter label="A Proposta">
+      <Chapter index={1} label="A Proposta">
         <Display>
           Não é sobre{' '}
           <span className="text-[var(--muted)]">performance.</span> É
@@ -105,7 +129,7 @@ export function RunClub() {
       </Chapter>
 
       {/* 03 — Cada um no seu ritmo */}
-      <Chapter label="Cada um no seu ritmo">
+      <Chapter index={2} label="Cada um no seu ritmo">
         <Display>Cada um no seu ritmo</Display>
 
         {/* Slot de imagem — aguardando foto real do grupo */}
@@ -144,7 +168,7 @@ export function RunClub() {
       </Chapter>
 
       {/* 04 — O benefício */}
-      <Chapter label="Quem corre, corta">
+      <Chapter index={3} label="Quem corre, corta">
         <Display>
           Correu com a gente?{' '}
           <span className="text-[var(--muted)]">10% off</span> no
@@ -158,7 +182,7 @@ export function RunClub() {
       </Chapter>
 
       {/* 05 — Entrar */}
-      <Chapter label="Vamos construir juntos">
+      <Chapter index={4} label="Vamos construir juntos">
         <Display>
           Quem participar
           <br />

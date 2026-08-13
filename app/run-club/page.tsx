@@ -8,9 +8,8 @@ export const metadata: Metadata = {
 }
 
 export default function RunClubPage() {
-  /* pt-20 abre espaço para a navbar fixa, mantendo o papel escuro sangrando até o topo. */
   return (
-    <div className="pt-20 bg-[var(--paper)]">
+    <div className="bg-[var(--paper)]">
       <RunClub />
     </div>
   )

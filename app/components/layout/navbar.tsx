@@ -5,81 +5,119 @@ import { usePathname } from 'next/navigation'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
 import { BOOKSY_URL, NAV_LINKS } from '@/app/lib/constants'
 
+/* Hallmark · nav archetype: N7 Brutal slab · design-system: design.md */
+
 /**
- * Navbar — Client Component por incluir ThemeToggle (que usa next-themes).
- * Fixo no topo com backdrop-blur e CTA de agendamento.
+ * Navbar — N7 Brutal slab.
+ *
+ * Full-width, borda inferior de 2px, wordmark e links em caixa alta tracked.
+ * Sem raio, sem sombra, sem `backdrop-blur` e **fora** de `position: fixed` —
+ * a barra vive no fluxo do documento. Os links quebram para uma segunda linha
+ * no mobile em vez de sumirem: nav escondida sem hambúrguer é nav inexistente.
  */
 export function Navbar() {
   const pathname = usePathname()
 
   return (
-    <header
-      id="navbar"
-      className="
-        fixed top-0 left-0 right-0 z-50
-        backdrop-blur-md
-        bg-paper/80
-        border-b border-rule
-        transition-colors duration-300
-      "
-    >
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="flex items-end gap-0 select-none group"
-          aria-label="Base Cut – Início"
-        >
-          <span className="text-xl font-black tracking-tight text-ink group-hover:text-ink transition-colors duration-300">
-            BASE
-          </span>
-          <span className="text-xl font-light tracking-widest text-muted ml-[2px]">
-            CUT
-          </span>
-        </Link>
+    <header id="navbar" className="bg-paper border-b-2 border-ink">
+      <div
+        className="
+          px-6 sm:px-10 py-4
+          flex flex-wrap items-center justify-between gap-x-8 gap-y-3
+        "
+      >
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            aria-label="Base Cut — Início"
+            className="
+              font-display font-black uppercase tracking-[-0.01em] text-xl text-ink
+              hover:opacity-70
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+              focus-visible:outline-ink
+              transition-opacity duration-200
+            "
+          >
+            Base<span className="text-muted">Cut</span>
+          </Link>
+        </div>
 
-        {/* Rotas */}
-        <nav className="hidden md:flex items-center gap-8" aria-label="Principal">
-          {NAV_LINKS.map(({ href, label }) => {
-            const active = pathname === href
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={`
-                  text-sm tracking-wide whitespace-nowrap
-                  transition-colors duration-200
-                  ${
-                    active
-                      ? 'text-ink font-semibold'
-                      : 'text-muted hover:text-ink'
-                  }
-                `}
-              >
-                {label}
-              </Link>
-            )
-          })}
+        <nav aria-label="Principal" className="order-3 w-full sm:order-none sm:w-auto">
+          <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {NAV_LINKS.map((link) => {
+              const { href, label } = link
+              const hoverLabel = 'hoverLabel' in link ? link.hoverLabel : undefined
+              const active = pathname === href
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-label={hoverLabel ? label : undefined}
+                    aria-current={active ? 'page' : undefined}
+                    className={`
+                      group block
+                      font-mono text-[11px] uppercase tracking-[0.2em] whitespace-nowrap
+                      border-b pb-0.5
+                      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+                      focus-visible:outline-ink
+                      transition-colors duration-200
+                      ${
+                        active
+                          ? 'text-ink border-ink'
+                          : 'text-muted border-transparent hover:text-ink'
+                      }
+                    `}
+                  >
+                    {hoverLabel ? (
+                      /* Grid empilha as duas palavras na mesma célula: a largura
+                         é a da mais larga, então trocar não desloca o layout. */
+                      <span aria-hidden="true" className="grid overflow-hidden">
+                        <span
+                          className="
+                            col-start-1 row-start-1
+                            transition-transform duration-300 ease-out
+                            group-hover:-translate-y-full group-focus-visible:-translate-y-full
+                            motion-reduce:transition-none
+                          "
+                        >
+                          {label}
+                        </span>
+                        <span
+                          className="
+                            col-start-1 row-start-1 translate-y-full
+                            transition-transform duration-300 ease-out
+                            group-hover:translate-y-0 group-focus-visible:translate-y-0
+                            motion-reduce:transition-none
+                          "
+                        >
+                          {hoverLabel}
+                        </span>
+                      </span>
+                    ) : (
+                      label
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
         </nav>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <ThemeToggle />
-
           <Link
             id="navbar-cta"
             href={BOOKSY_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="
-              inline-flex items-center gap-2
-              px-5 py-2 rounded-full text-sm font-semibold
-              tracking-wide
+              px-5 py-2.5
+              font-mono text-[11px] uppercase tracking-[0.2em] whitespace-nowrap
               bg-ink text-paper
               hover:opacity-90
-              transition-all duration-300
-              whitespace-nowrap
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+              focus-visible:outline-ink
+              transition-opacity duration-200
             "
           >
             Agendar

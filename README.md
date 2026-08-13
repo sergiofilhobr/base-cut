@@ -11,9 +11,9 @@ base-cut/
 ├── app/
 │   ├── page.tsx                    # Rota /        — Hero
 │   ├── servicos/page.tsx           # Rota /servicos — serviços + tabela de preços
-│   ├── sobre/page.tsx              # Rota /sobre
 │   ├── run-club/page.tsx           # Rota /run-club
-│   ├── contato/page.tsx            # Rota /contato
+│   ├── galeria/page.tsx            # Rota /galeria — O Barbeiro, Ambiente, Atendimentos, Run
+│   ├── contato/page.tsx            # Rota /contato — mapa + avaliações
 │   ├── layout.tsx                  # Root layout — fontes, Navbar e Footer compartilhados
 │   ├── globals.css                 # Tokens do sistema (Tailwind v4)
 │   ├── components/
@@ -22,9 +22,10 @@ base-cut/
 │   │   │   └── footer.tsx          # Rodapé com contato e redes
 │   │   ├── sections/
 │   │   │   ├── hero.tsx            # Chamada principal com CTA (Booksy)
-│   │   │   ├── about.tsx           # A Experiência
 │   │   │   ├── services.tsx        # Serviços oferecidos
 │   │   │   ├── run-club.tsx        # Base Run — deck de 5 capítulos em carrossel
+│   │   │   ├── gallery.tsx         # Galeria — slots de foto por capítulo
+│   │   │   ├── location.tsx        # Onde é a base — endereço + mapa do Google
 │   │   │   └── google-review.tsx   # Avaliações do Google
 │   │   ├── ui/
 │   │   │   ├── barber-pole.tsx     # Poste de barbearia animado (anime.js)
@@ -128,7 +129,7 @@ Acesse **[http://localhost:3000](http://localhost:3000)**.
 O site tem cinco rotas. Todas devem responder `200`:
 
 ```bash
-for p in / /servicos /sobre /run-club /contato; do echo "$p -> $(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000$p)"; done
+for p in / /servicos /run-club /galeria /contato; do echo "$p -> $(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000$p)"; done
 ```
 
 E a checagem de tipos deve passar limpa:
@@ -184,9 +185,9 @@ npm run dev -- -p 3001
 |---|---|---|
 | `/` | `app/page.tsx` | Hero com CTA de agendamento (Booksy) |
 | `/servicos` | `app/servicos/page.tsx` | Serviços + tabela de preços (`lib/services.json`) |
-| `/sobre` | `app/sobre/page.tsx` | A Experiência |
 | `/run-club` | `app/run-club/page.tsx` | Base Run — 5 capítulos em carrossel |
-| `/contato` | `app/contato/page.tsx` | Avaliações do Google, endereço e redes |
+| `/galeria` | `app/galeria/page.tsx` | O Barbeiro, Ambiente, Atendimentos, Run — slots de foto |
+| `/contato` | `app/contato/page.tsx` | Onde é a base (mapa) + avaliações do Google |
 
 Navbar e Footer vivem no `layout.tsx` e são compartilhados por todas as rotas. Cada página define sua própria `metadata` para SEO.
 
@@ -213,7 +214,7 @@ A paleta nasceu no deck do Base Run: neutros quentes, sem acento cromático. Sã
 | Token | Claro | Escuro | Uso |
 |---|---|---|---|
 | `--paper` | `#f2efe6` | `#1a1917` | Fundo da página |
-| `--surface` | `#fbfaf5` | `#232220` | Superfície elevada (cards) |
+| `--surface` | `#ece7d9` | `#232220` | Superfície elevada (cards) |
 | `--ink` | `#1a1917` | `#f2efe6` | Texto principal |
 | `--muted` | `#5f5d58` | `#8f8d85` | Texto de apoio |
 | `--rule` | `#d8d3c6` | `#34332f` | Bordas e réguas |

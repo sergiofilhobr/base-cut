@@ -1,134 +1,127 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { staggerVariants, delayedFade } from '@/app/lib/motion'
+import { animated, useReducedMotion, useSpring, useTrail } from '@react-spring/web'
 import { BarberPole } from '@/app/components/ui/barber-pole'
 import { BOOKSY_URL } from '@/app/lib/constants'
+import { SMOOTH_CONFIG } from '@/app/lib/motion'
+
+const DATA_ROWS = [
+  ['Onde', 'Itajaí — SC'],
+  ['Rua', 'Juvenal García, 64'],
+  ['Agenda', 'Booksy'],
+  ['Base Run', 'Domingos'],
+] as const
+
+/* Hallmark · genre: editorial · macrostructure: Marquee Hero
+ * design-system: design.md · designed-as-app
+ * nav: N7 brutal slab · footer: Ft4 dense colophon
+ */
 
 /**
- * Hero Section — seção inicial em tela cheia com slogan, subtítulo e CTA principal.
- * Client Component por usar motion do Framer Motion.
+ * Hero — Marquee Hero.
+ *
+ * O enunciado ocupa a dobra sozinho, alinhado à esquerda. Não há eyebrow, não há
+ * subtítulo centralizado, e a altura é a do conteúdo — não `min-h-screen`.
+ * Abaixo da dobra a página muda de forma: vira uma régua de dados em mono.
+ *
+ * Esta é a única entrada animada do site inteiro (design.md § Motion).
  */
 export function Hero() {
+  const reduce = useReducedMotion()
+
+  /* Entrada orquestrada em três tempos — título, régua de dados em
+     cascata, CTA por último. A única animação do site inteiro (design.md
+     § Motion), então ela carrega o peso de dar vida à chegada na home. */
+  const rise = useSpring(
+    reduce
+      ? { from: { opacity: 0 }, to: { opacity: 1 } }
+      : {
+          from: { opacity: 0, y: 20 },
+          to: { opacity: 1, y: 0 },
+          config: { tension: 200, friction: 24 },
+        },
+  )
+
+  const gridTrail = useTrail(DATA_ROWS.length, {
+    from: reduce ? { opacity: 0 } : { opacity: 0, y: 16 },
+    to: reduce ? { opacity: 1 } : { opacity: 1, y: 0 },
+    delay: reduce ? 0 : 280,
+    config: SMOOTH_CONFIG,
+  })
+
+  const cta = useSpring({
+    from: reduce ? { opacity: 0 } : { opacity: 0, y: 12 },
+    to: reduce ? { opacity: 1 } : { opacity: 1, y: 0 },
+    delay: reduce ? 0 : 620,
+    config: SMOOTH_CONFIG,
+  })
+
   return (
-    <section
-      id="hero"
-      className="
-        relative min-h-screen flex flex-col items-center justify-center
-        px-6 pt-24 pb-24
-        bg-paper
-        overflow-hidden
-      "
-    >
-      {/* Decorative glow */}
-      <div
-        aria-hidden="true"
-        className="
-          absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-          w-[700px] h-[700px] rounded-full
-          bg-surface dark:bg-surface
-          blur-3xl pointer-events-none
-        "
-      />
+    <section id="hero" className="relative bg-paper overflow-hidden">
+      <div className="px-6 sm:px-10 pt-28 pb-16 sm:pt-36 sm:pb-20">
+        <div className="max-w-6xl">
+          <animated.h1
+            style={{ ...rise, overflowWrap: 'anywhere' }}
+            className="
+              font-display font-black uppercase text-ink
+              text-[3.25rem] sm:text-8xl md:text-9xl
+              leading-[0.86] tracking-[-0.03em]
+            "
+          >
+            Precisão
+            <br />
+            <span className="text-muted">é a base.</span>
+          </animated.h1>
+        </div>
 
-      {/* Barber pole — poste giratório nas laterais (apenas telas largas) */}
-      <BarberPole className="hidden lg:flex absolute left-10 xl:left-16 top-1/2 -translate-y-1/2 w-11 h-72" />
-      <BarberPole
-        className="hidden lg:flex absolute right-10 xl:right-16 top-1/2 -translate-y-1/2 w-11 h-72"
-        speed={1}
-      />
+        {/* O poste grande é exclusivo da home — nas outras rotas ele vai ao header. */}
+        <BarberPole className="hidden lg:flex absolute right-10 xl:right-16 top-28 w-10 h-64" />
+      </div>
 
-      {/* Right-side decorative rule */}
-      <div
-        aria-hidden="true"
-        className="
-          absolute top-0 right-0
-          w-px h-full
-          bg-gradient-to-b from-transparent via-rule to-transparent
-        "
-      />
+      {/* Abaixo da dobra o hero vira uma régua de dados — muda de forma. */}
+      <div className="border-t-2 border-ink">
+        <dl className="grid grid-cols-2 md:grid-cols-4">
+          {gridTrail.map((style, i) => {
+            const [label, value] = DATA_ROWS[i]
+            return (
+              <animated.div
+                key={label}
+                style={style}
+                className="px-6 sm:px-10 py-6 border-b md:border-b-0 border-r last:border-r-0 border-rule"
+              >
+                <dt className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted">
+                  {label}
+                </dt>
+                <dd className="mt-2 text-sm sm:text-base text-ink">{value}</dd>
+              </animated.div>
+            )
+          })}
+        </dl>
+      </div>
 
-      <motion.div
-        className="relative z-10 flex flex-col items-center text-center max-w-3xl"
-        variants={staggerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Eyebrow */}
-        <motion.p
-          variants={delayedFade(0)}
-          className="mb-6 text-sm font-semibold uppercase tracking-[0.3em] text-muted"
-        >
-          Barbearia de Alto Padrão — Itajaí
-        </motion.p>
-
-        {/* H1 */}
-        <motion.h1
-          variants={delayedFade(0.1)}
-          className="
-            text-5xl sm:text-7xl md:text-8xl
-            font-black leading-[0.95] tracking-tight
-            text-ink
-            mb-8
-          "
-        >
-          PRECISÃO{' '}
-          <span className="font-extralight text-muted">
-            É A BASE.
-          </span>
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          variants={delayedFade(0.2)}
-          className="
-            text-base sm:text-lg leading-relaxed max-w-xl
-            text-muted
-            mb-12
-          "
-        >
-          Um ambiente pensado nos detalhes. Da recepção ao corte,
-          entregamos uma experiência de alto nível.
-        </motion.p>
-
-        {/* CTA */}
-        <motion.div variants={delayedFade(0.3)}>
+      {/* CTA fora da dobra, como manda o Marquee Hero. */}
+      <div className="border-t-2 border-ink px-6 sm:px-10 py-10">
+        <animated.div style={cta} className="inline-block">
           <Link
             id="hero-cta"
             href={BOOKSY_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="
-              group inline-flex items-center gap-2
-              px-8 py-4 rounded-full
-              text-sm sm:text-base font-bold tracking-wide uppercase
+              inline-flex items-center gap-3 px-8 py-4
+              font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
               bg-ink text-paper
-              hover:scale-105
-              active:scale-100
-              transition-all duration-300 ease-out
+              hover:opacity-90
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+              focus-visible:outline-ink
+              transition-opacity duration-200
             "
           >
-            Garantir Meu Horário
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              className="group-hover:translate-x-0.5 transition-transform duration-300"
-            >
-              <path
-                d="M1 7h12M8 2l5 5-5 5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            Agendar horário
           </Link>
-        </motion.div>
-      </motion.div>
-
+        </animated.div>
+      </div>
     </section>
   )
 }

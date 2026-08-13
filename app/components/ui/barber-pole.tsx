@@ -90,7 +90,7 @@ export function BarberPole({ className = '', speed = 1 }: BarberPoleProps) {
           className="relative w-[18px] h-[18px] rounded-full"
           style={{
             background:
-              'radial-gradient(circle at 34% 28%, #ffffff 0%, var(--pole-glow) 62%, var(--pole-mid) 100%)',
+              'radial-gradient(circle at 34% 28%, #ffffff 0%, var(--pole-light) 55%, var(--pole-mid) 100%)',
             boxShadow:
               '0 0 14px 3px color-mix(in srgb, var(--pole-glow) 65%, transparent)',
           }}
