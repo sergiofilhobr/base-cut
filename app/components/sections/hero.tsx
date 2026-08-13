@@ -79,9 +79,11 @@ export function Hero() {
         <BarberPole className="hidden lg:flex absolute right-10 xl:right-16 top-28 w-10 h-64" />
       </div>
 
-      {/* Abaixo da dobra o hero vira uma régua de dados — muda de forma. */}
+      {/* Abaixo da dobra o hero vira uma régua de dados — muda de forma.
+          max-w trava as células em telas muito largas (2560px+): sem isso
+          cada uma vira um vazio com um rótulo perdido no meio. */}
       <div className="border-t-2 border-ink">
-        <dl className="grid grid-cols-2 md:grid-cols-4">
+        <dl className="max-w-[1600px] grid grid-cols-2 md:grid-cols-4">
           {gridTrail.map((style, i) => {
             const [label, value] = DATA_ROWS[i]
             return (

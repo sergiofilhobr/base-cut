@@ -63,7 +63,7 @@ export function Gallery() {
 
       <div
         ref={ref}
-        className="px-6 sm:px-10 pb-28 columns-2 lg:columns-3 gap-4 sm:gap-6"
+        className="max-w-[1600px] px-6 sm:px-10 pb-28 columns-2 lg:columns-3 gap-4 sm:gap-6"
       >
         {trail.map((style, i) => {
           const { src, alt, width, height } = PHOTOS[i]

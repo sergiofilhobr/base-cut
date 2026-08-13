@@ -26,7 +26,7 @@ export default function ContatoPage() {
 
       <hr className="mt-10 mb-10 border-0 h-px bg-rule" />
 
-      <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+      <div className="max-w-[1600px] grid gap-12 lg:grid-cols-2 lg:gap-16">
         <Location />
         <GoogleReview />
       </div>
