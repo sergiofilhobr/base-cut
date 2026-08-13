@@ -1,8 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Menu } from 'lucide-react'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
+import { MobileDrawer } from '@/app/components/layout/mobile-drawer'
 import { BOOKSY_URL, NAV_LINKS } from '@/app/lib/constants'
 
 /* Hallmark · nav archetype: N7 Brutal slab · design-system: design.md */
@@ -12,11 +15,14 @@ import { BOOKSY_URL, NAV_LINKS } from '@/app/lib/constants'
  *
  * Full-width, borda inferior de 2px, wordmark e links em caixa alta tracked.
  * Sem raio, sem sombra, sem `backdrop-blur` e **fora** de `position: fixed` —
- * a barra vive no fluxo do documento. Os links quebram para uma segunda linha
- * no mobile em vez de sumirem: nav escondida sem hambúrguer é nav inexistente.
+ * a barra vive no fluxo do documento. A partir de `sm` os links vivem no
+ * próprio header; abaixo disso não sobra largura pra isso sem apertar tudo,
+ * então a nav migra para o `MobileDrawer` — um tap de distância, nunca
+ * escondida atrás de mais de um nível de navegação.
  */
 export function Navbar() {
   const pathname = usePathname()
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
     <header id="navbar" className="bg-paper border-b-2 border-ink">
@@ -42,7 +48,7 @@ export function Navbar() {
           </Link>
         </div>
 
-        <nav aria-label="Principal" className="order-3 w-full sm:order-none sm:w-auto">
+        <nav aria-label="Principal" className="hidden sm:block">
           <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {NAV_LINKS.map((link) => {
               const { href, label } = link
@@ -111,6 +117,7 @@ export function Navbar() {
             target="_blank"
             rel="noopener noreferrer"
             className="
+              hidden sm:inline-flex
               px-5 py-2.5
               font-mono text-[11px] uppercase tracking-[0.2em] whitespace-nowrap
               bg-ink text-paper
@@ -122,8 +129,31 @@ export function Navbar() {
           >
             Agendar
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Abrir menu"
+            aria-expanded={drawerOpen}
+            className="
+              sm:hidden -mr-1
+              w-11 h-11 flex items-center justify-center text-ink
+              hover:opacity-70
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+              focus-visible:outline-ink
+              transition-opacity duration-200
+            "
+          >
+            <Menu size={22} aria-hidden="true" />
+          </button>
         </div>
       </div>
+
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        pathname={pathname}
+      />
     </header>
   )
 }

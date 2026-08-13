@@ -90,7 +90,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
       role="dialog"
       aria-modal="true"
       aria-label="Visualizador de fotos"
-      className="fixed inset-0 z-50 bg-ink/95 flex items-center justify-center"
+      className="fixed inset-0 z-[60] bg-ink/95 flex items-center justify-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}

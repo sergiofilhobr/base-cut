@@ -169,7 +169,7 @@ export function Carousel({ children, label }: CarouselProps) {
 
       {/* Controles */}
       <div className="flex items-center justify-between gap-6 px-6 sm:px-10 pt-2 pb-10">
-        <div className="flex gap-2" role="tablist" aria-label="Ir para o capítulo">
+        <div className="flex" role="tablist" aria-label="Ir para o capítulo">
           {slides.map((_, i) => (
             <button
               key={i}
@@ -178,13 +178,18 @@ export function Carousel({ children, label }: CarouselProps) {
               aria-selected={i === index}
               aria-label={`Capítulo ${i + 1}`}
               onClick={() => goTo(i)}
-              className={`
-                h-1.5 rounded-full transition-[width,background-color] duration-200
-                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
-                focus-visible:outline-ink
-                ${i === index ? 'w-8 bg-ink' : 'w-1.5 bg-muted hover:bg-ink'}
-              `}
-            />
+              /* Área de toque de 44px: o miolo colorido continua fino,
+                 só o botão cresce por dentro do padding. */
+              className="group p-[19px] -mx-[15px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              <span
+                aria-hidden="true"
+                className={`
+                  block h-1.5 rounded-full transition-[width,background-color] duration-200
+                  ${i === index ? 'w-8 bg-ink' : 'w-1.5 bg-muted group-hover:bg-ink'}
+                `}
+              />
+            </button>
           ))}
         </div>
 

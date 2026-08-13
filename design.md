@@ -82,7 +82,9 @@ vertical varia de propósito entre as famílias (ver *Per-page allowances*).
 ## Componentes de chrome
 
 - **Nav:** N7 Brutal slab — full-width, borda inferior de 2px, wordmark e links
-  em caixa alta tracked, sem raio, sem sombra, sem `backdrop-blur`.
+  em caixa alta tracked, sem raio, sem sombra, sem `backdrop-blur`. Abaixo de
+  `sm` os links migram para um `MobileDrawer` (painel lateral, mola do
+  react-spring) — não sobra largura pro slab completo sem apertar tudo.
 - **Footer:** Ft4 Dense colophon — bloco denso em mono com endereço, horário e
   créditos. Sem colunas de links, sem fileira de ícones sociais.
 

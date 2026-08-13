@@ -136,7 +136,7 @@ export function RunClub() {
         <figure className="mt-10">
           <div
             className="
-              aspect-[4/3] sm:aspect-[16/9] w-full max-h-[200px]
+              aspect-[4/3] sm:aspect-[16/9] w-full max-w-md sm:max-w-none
               border border-dashed border-[var(--muted)]/50
               flex items-center justify-center
             "
