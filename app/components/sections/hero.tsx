@@ -22,8 +22,9 @@ const DATA_ROWS = [
  * Hero — Marquee Hero.
  *
  * O enunciado ocupa a dobra sozinho, alinhado à esquerda. Não há eyebrow, não há
- * subtítulo centralizado, e a altura é a do conteúdo — não `min-h-screen`.
- * Abaixo da dobra a página muda de forma: vira uma régua de dados em mono.
+ * subtítulo centralizado. Abaixo da dobra a página muda de forma: vira uma
+ * régua de dados em mono. `min-h-dvh` garante que o rodapé não apareça sem
+ * rolar — o CTA (`mt-auto`) fica ancorado embaixo da viewport.
  *
  * Esta é a única entrada animada do site inteiro (design.md § Motion).
  */
@@ -58,7 +59,7 @@ export function Hero() {
   })
 
   return (
-    <section id="hero" className="relative bg-paper overflow-hidden">
+    <section id="hero" className="relative bg-paper overflow-hidden min-h-dvh flex flex-col">
       <div className="px-6 sm:px-10 pt-28 pb-16 sm:pt-36 sm:pb-20">
         <div className="max-w-6xl">
           <animated.h1
@@ -102,8 +103,10 @@ export function Hero() {
         </dl>
       </div>
 
-      {/* CTA fora da dobra, como manda o Marquee Hero. */}
-      <div className="border-t-2 border-ink px-6 sm:px-10 py-10">
+      {/* CTA fora da dobra, como manda o Marquee Hero. mt-auto: ancora o CTA
+          embaixo do min-h-dvh, então o vão extra fica entre a régua de dados
+          e o CTA, não como um buraco solto no fim da página. */}
+      <div className="mt-auto border-t-2 border-ink px-6 sm:px-10 py-10">
         <animated.div style={cta} className="inline-block">
           <Link
             id="hero-cta"

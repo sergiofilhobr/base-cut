@@ -58,15 +58,35 @@ export function GoogleReview() {
 
   return (
     <div id="avaliacao">
-      <h2
-        className="
-          font-display font-black uppercase text-ink
-          text-2xl sm:text-3xl
-          tracking-tight
-        "
-      >
-        Sua satisfação <span className="text-muted">é a nossa base.</span>
-      </h2>
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+        <h2
+          className="
+            font-display font-black uppercase text-ink
+            text-2xl sm:text-3xl
+            tracking-tight
+          "
+        >
+          Sua satisfação <span className="text-muted">é a nossa base.</span>
+        </h2>
+
+        <a
+          id="google-review-card"
+          href={GOOGLE_REVIEW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="
+            shrink-0 inline-flex items-center px-8 py-4
+            font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
+            bg-ink text-paper
+            hover:opacity-90
+            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+            focus-visible:outline-ink
+            transition-opacity duration-200
+          "
+        >
+          Avaliar no Google
+        </a>
+      </div>
 
       <div ref={ref} className="mt-6 divide-y divide-rule border-y border-rule">
         {REVIEWS.length > 0
@@ -135,24 +155,6 @@ export function GoogleReview() {
         Cortou com a gente? Conta como foi — é o que ajuda quem ainda não
         conhece a casa a decidir.
       </p>
-
-      <a
-        id="google-review-card"
-        href={GOOGLE_REVIEW_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="
-          mt-6 inline-flex items-center px-8 py-4
-          font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
-          bg-ink text-paper
-          hover:opacity-90
-          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
-          focus-visible:outline-ink
-          transition-opacity duration-200
-        "
-      >
-        Avaliar no Google
-      </a>
     </div>
   )
 }

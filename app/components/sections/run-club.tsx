@@ -55,11 +55,11 @@ function Chapter({
       /* w-full + justify-center: o slide é esticado até a altura do mais alto,
          então centralizamos o conteúdo para a folga se dividir em cima e embaixo
          em vez de despencar tudo abaixo do texto. */
-      className={`w-full flex flex-col justify-center px-6 sm:px-10 py-10 sm:py-12 ${className}`}
+      className={`w-full flex flex-col justify-center px-6 sm:px-10 py-6 sm:py-8 ${className}`}
     >
       <animated.div style={style} className="max-w-4xl w-full mx-auto">
         {/* Eyebrow em mono; o título vem embaixo, na mesma coluna. */}
-        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-[var(--ink)] mb-8 sm:mb-10">
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-[var(--ink)] mb-5 sm:mb-6">
           {label}
         </p>
         {children}
@@ -106,7 +106,7 @@ export function RunClub() {
           <span className="text-[var(--muted)]">resenha</span>
           <br />e constância.
         </Display>
-        <hr className="my-10 border-0 h-px bg-[var(--muted)]/40" />
+        <hr className="my-6 border-0 h-px bg-[var(--muted)]/40" />
         <p className="max-w-xl text-base sm:text-lg leading-relaxed text-[var(--ink)]/80">
           Muito mais que um corte — um jeito de ocupar o domingo. O ponto de
           encontro é a nossa base.
@@ -120,7 +120,7 @@ export function RunClub() {
           <span className="text-[var(--muted)]">performance.</span> É
           sobre a experiência.
         </Display>
-        <hr className="my-10 border-0 h-px bg-[var(--muted)]/40" />
+        <hr className="my-6 border-0 h-px bg-[var(--muted)]/40" />
         <p className="max-w-xl text-base sm:text-lg leading-relaxed text-[var(--ink)]/80">
           A ideia é viver a experiência, sair da rotina, conhecer novas pessoas e
           criar constância juntos. Não é sobre pace ou competição — cada um no
@@ -132,11 +132,13 @@ export function RunClub() {
       <Chapter index={2} label="Cada um no seu ritmo">
         <Display>Cada um no seu ritmo</Display>
 
-        {/* Slot de imagem — aguardando foto real do grupo */}
-        <figure className="mt-10">
+        {/* Slot de imagem — aguardando foto real do grupo.
+            max-h fixo: sem ele, este era o capítulo mais alto do deck e
+            empurrava os controles do carrossel pra fora da tela. */}
+        <figure className="mt-6">
           <div
             className="
-              aspect-[4/3] sm:aspect-[16/9] w-full max-w-md sm:max-w-none
+              aspect-[4/3] sm:aspect-[21/9] w-full max-h-[130px]
               border border-dashed border-[var(--muted)]/50
               flex items-center justify-center
             "
@@ -150,7 +152,7 @@ export function RunClub() {
           </figcaption>
         </figure>
 
-        <dl className="mt-10 divide-y divide-[var(--muted)]/30 border-y border-[var(--muted)]/30">
+        <dl className="mt-6 divide-y divide-[var(--muted)]/30 border-y border-[var(--muted)]/30">
           {PACE.map(({ label, value }) => (
             <div
               key={label}
@@ -174,7 +176,7 @@ export function RunClub() {
           <span className="text-[var(--muted)]">10% off</span> no
           corte.
         </Display>
-        <hr className="my-10 border-0 h-px bg-[var(--muted)]/40" />
+        <hr className="my-6 border-0 h-px bg-[var(--muted)]/40" />
         <p className="max-w-xl text-base sm:text-lg leading-relaxed text-[var(--ink)]/80">
           Vale para todos os cortes, em qualquer dia da semana. Basta ter estado
           na corrida de domingo.
@@ -189,7 +191,7 @@ export function RunClub() {
           já faz parte
         </Display>
 
-        <ol className="mt-10 space-y-4">
+        <ol className="mt-6 space-y-3">
           {STEPS.map((step, i) => (
             <li key={step} className="flex items-baseline gap-5">
               <span className="font-mono text-[11px] tracking-[0.2em] text-[var(--muted)] shrink-0">
@@ -208,7 +210,7 @@ export function RunClub() {
           target="_blank"
           rel="noopener noreferrer"
           className="
-            mt-10 inline-flex items-center gap-3
+            mt-6 inline-flex items-center gap-3
             px-8 py-4
             font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
             bg-[var(--ink)] text-[var(--paper)]
