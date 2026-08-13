@@ -6,13 +6,65 @@
 /* ── Tailwind v4: teach the dark: prefix to use the .dark class ── */
 @variant dark (&:where(.dark, .dark *));
 
+/* ──────────────────────────────────────────────────────────────
+   Paleta do sistema — nasceu no deck do Base Run.
+   Neutros quentes, sem acento cromático: papel, superfície,
+   tinta, apoio e régua. Os valores viram do claro para o escuro;
+   os componentes referenciam só o nome semântico, então nenhum
+   deles precisa de variante `dark:` para cor.
+   ────────────────────────────────────────────────────────────── */
+:root {
+  --paper: #f2efe6; /* creme — a tinta do modo escuro */
+  --surface: #fbfaf5; /* superfície elevada (cards) */
+  --ink: #1a1917; /* quase-preto quente */
+  --muted: #5f5d58; /* apoio — 5.1:1 sobre o papel */
+  --rule: #d8d3c6; /* fio de régua e bordas */
+}
+
+/* Barber pole — material físico: usa os mesmos neutros quentes,
+   mas fixo, porque um objeto não inverte junto com o tema. */
+:root {
+  --pole-dark: #1a1917;
+  --pole-light: #f2efe6;
+  --pole-mid: #8f8d85;
+  /* Exceção deliberada: o brilho do globo INVERTE com o tema.
+     Não é material do objeto — é legibilidade. Um halo creme
+     sobre papel creme simplesmente não existe. */
+  --pole-glow: #d98c1f; /* âmbar — lâmpada acesa sobre papel claro */
+  --pole-chrome: linear-gradient(
+    90deg,
+    #3a3835 0%,
+    #a8a49b 16%,
+    #f2efe6 33%,
+    #cfcbc0 48%,
+    #6f6d67 72%,
+    #3a3835 100%
+  );
+}
+
+.dark {
+  --pole-glow: #fff4d8; /* branco quente — sobre papel escuro */
+
+  --paper: #1a1917;
+  --surface: #232220;
+  --ink: #f2efe6;
+  --muted: #8f8d85; /* clareado no escuro para manter 5:1 */
+  --rule: #34332f;
+}
+
 /* ── Design tokens ── */
 @theme inline {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  /* Display: grotesk pesado — títulos em caixa alta */
+  --font-display: var(--font-archivo), "Archivo", system-ui, sans-serif;
+  /* Mono: eyebrows e rótulos */
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
-  /* Brand accent: warm gold/champagne */
-  --color-accent: #c9a96e;
-  --color-accent-dark: #b8914f;
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
 }
 
 /* ── Base ── */
@@ -44,10 +96,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c9a96e55;
+  background: var(--muted);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #c9a96e;
+  background: var(--ink);
 }

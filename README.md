@@ -9,25 +9,36 @@ Site institucional da **Base Cut Barbearia**, localizada em Itajaí/SC. Desenvol
 ```
 base-cut/
 ├── app/
+│   ├── page.tsx                    # Rota /        — Hero
+│   ├── servicos/page.tsx           # Rota /servicos — serviços + tabela de preços
+│   ├── sobre/page.tsx              # Rota /sobre
+│   ├── run-club/page.tsx           # Rota /run-club
+│   ├── contato/page.tsx            # Rota /contato
+│   ├── layout.tsx                  # Root layout — fontes, Navbar e Footer compartilhados
+│   ├── globals.css                 # Tokens do sistema (Tailwind v4)
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── navbar.tsx          # Barra de navegação responsiva com troca de tema
-│   │   │   └── footer.tsx          # Rodapé com links e informações de contato
+│   │   │   ├── navbar.tsx          # Navegação entre rotas + troca de tema
+│   │   │   └── footer.tsx          # Rodapé com contato e redes
 │   │   ├── sections/
-│   │   │   ├── hero.tsx            # Seção principal com CTA para agendamento
-│   │   │   ├── about.tsx           # Sobre a barbearia
+│   │   │   ├── hero.tsx            # Chamada principal com CTA (Booksy)
+│   │   │   ├── about.tsx           # A Experiência
 │   │   │   ├── services.tsx        # Serviços oferecidos
-│   │   │   ├── run-club.tsx        # Base Run Club — comunidade de corrida
+│   │   │   ├── run-club.tsx        # Base Run — deck de 5 capítulos em carrossel
 │   │   │   └── google-review.tsx   # Avaliações do Google
 │   │   ├── ui/
-│   │   │   ├── animated-section.tsx  # Wrapper reutilizável com animação de entrada
-│   │   │   └── theme-toggle.tsx      # Botão de alternância dark/light mode
+│   │   │   ├── barber-pole.tsx     # Poste de barbearia animado (anime.js)
+│   │   │   ├── carousel.tsx        # Carrossel acessível (base: reactbits.dev)
+│   │   │   ├── animated-section.tsx  # Wrapper com animação de entrada
+│   │   │   └── theme-toggle.tsx      # Alternância dark / light
 │   │   └── providers.tsx           # ThemeProvider (next-themes)
-│   ├── globals.css                 # Design tokens e estilos globais (Tailwind v4)
-│   ├── layout.tsx                  # Root layout com metadata SEO e fonte Inter
-│   └── page.tsx                    # Home — Server Component que orquestra as seções
+│   └── lib/
+│       ├── constants.ts            # Rotas da navbar, URLs externas, serviços
+│       ├── services.json           # Tabela de preços
+│       └── motion.ts               # Variantes de animação compartilhadas
 ├── public/
-│   └── favicon.svg
+│   ├── favicon.svg                 # Navalha
+│   └── assets/images/              # Logo e fotos dos modelos
 ├── next.config.ts
 ├── tsconfig.json
 └── package.json
@@ -43,7 +54,8 @@ base-cut/
 | [React](https://react.dev) | 19.2.4 | UI |
 | [TypeScript](https://www.typescriptlang.org) | ^5 | Tipagem estática |
 | [Tailwind CSS](https://tailwindcss.com) | ^4 | Estilização utilitária |
-| [Framer Motion](https://www.framer.com/motion) | ^12 | Animações e transições |
+| [Framer Motion](https://www.framer.com/motion) | ^12 | Animações, transições e o carrossel |
+| [anime.js](https://animejs.com) | ^4.5 | Rotação do barber pole |
 | [next-themes](https://github.com/pacocoursey/next-themes) | ^0.4 | Dark / Light mode |
 | [lucide-react](https://lucide.dev) | ^1.7 | Biblioteca de ícones |
 
@@ -53,24 +65,105 @@ base-cut/
 
 ### Pré-requisitos
 
-- Node.js >= 20
-- npm >= 10
+| | Versão | Por quê |
+|---|---|---|
+| Node.js | **>= 20.9.0** | Exigência do Next 16 (`engines` do pacote). Node 18 falha na hora do `next dev` |
+| npm | >= 10 | Acompanha o Node 20+ |
+| git | qualquer | Para clonar |
 
-### Instalação
+---
+
+### Passo 1 — Confira a versão do Node
 
 ```bash
-# Clone o repositório
-git clone <url-do-repositorio>
+node -v
+```
+
+Se aparecer algo abaixo de `v20.9.0`, **pare aqui** e resolva antes de instalar. O Next 16 não sobe em Node 18 — o erro é literal:
+
+```
+You are using Node.js 18.19.1. For Next.js, Node.js version ">=20.9.0" is required.
+```
+
+Com [nvm](https://github.com/nvm-sh/nvm):
+
+```bash
+nvm install 22
+nvm use 22
+```
+
+> ⚠️ **Importante:** rode `nvm use` **antes** do `npm install`. Instalar dependências com o Node errado corrompe os binários nativos do Tailwind (veja *Solução de problemas*).
+
+---
+
+### Passo 2 — Clone o repositório
+
+```bash
+git clone git@github.com:sergiofilhobr/base-cut.git
 cd base-cut
+```
 
-# Instale as dependências
+---
+
+### Passo 3 — Instale as dependências
+
+```bash
 npm install
+```
 
-# Inicie o servidor de desenvolvimento
+---
+
+### Passo 4 — Suba o servidor de desenvolvimento
+
+```bash
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000) no navegador.
+Acesse **[http://localhost:3000](http://localhost:3000)**.
+
+---
+
+### Passo 5 — Verifique se subiu certo
+
+O site tem cinco rotas. Todas devem responder `200`:
+
+```bash
+for p in / /servicos /sobre /run-club /contato; do echo "$p -> $(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000$p)"; done
+```
+
+E a checagem de tipos deve passar limpa:
+
+```bash
+npx tsc --noEmit
+```
+
+---
+
+## 🔧 Solução de problemas
+
+### `Cannot find native binding` no `@tailwindcss/oxide`
+
+```
+Error: Cannot find native binding.
+Cannot find module '@tailwindcss/oxide-linux-x64-gnu'
+```
+
+O Tailwind v4 usa um binário nativo escolhido por plataforma **no momento do `npm install`**. Se as dependências foram instaladas com uma versão de Node diferente da que está rodando o servidor, esse binário não é baixado.
+
+```bash
+nvm use 22
+rm -rf node_modules .next
+npm install
+npm run dev
+```
+
+Apagar o `.next` importa: o Turbopack guarda o erro em cache e continua mostrando a falha mesmo depois de o pacote ser corrigido.
+
+### A porta 3000 já está em uso
+
+```bash
+npm run dev -- -p 3001
+```
 
 ---
 
@@ -85,34 +178,49 @@ Acesse [http://localhost:3000](http://localhost:3000) no navegador.
 
 ---
 
-## 🎨 Seções da Landing Page
+## 🎨 Rotas
 
-| Seção | Componente | Descrição |
+| Rota | Página | Conteúdo |
 |---|---|---|
-| Navbar | `layout/navbar.tsx` | Navegação fixa com scroll suave e toggle de tema |
-| Hero | `sections/hero.tsx` | Chamada principal com botão de agendamento (Booksy) |
-| Sobre | `sections/about.tsx` | História e diferenciais da barbearia |
-| Serviços | `sections/services.tsx` | Grade de serviços oferecidos |
-| Base Run Club | `sections/run-club.tsx` | Comunidade de corrida — captação via WhatsApp |
-| Avaliações | `sections/google-review.tsx` | Depoimentos e nota no Google |
-| Footer | `layout/footer.tsx` | Redes sociais, localização e contato |
+| `/` | `app/page.tsx` | Hero com CTA de agendamento (Booksy) |
+| `/servicos` | `app/servicos/page.tsx` | Serviços + tabela de preços (`lib/services.json`) |
+| `/sobre` | `app/sobre/page.tsx` | A Experiência |
+| `/run-club` | `app/run-club/page.tsx` | Base Run — 5 capítulos em carrossel |
+| `/contato` | `app/contato/page.tsx` | Avaliações do Google, endereço e redes |
+
+Navbar e Footer vivem no `layout.tsx` e são compartilhados por todas as rotas. Cada página define sua própria `metadata` para SEO.
 
 ---
 
 ## 🏗 Arquitetura
 
-A página principal (`page.tsx`) é um **Server Component** que apenas orquestra as seções. Toda a interatividade (animações, formulários, toggles) fica isolada nos **Client Components** individuais, seguindo as boas práticas do Next.js App Router.
+```
+layout.tsx (Server Component)
+├── <Navbar />          → Client (usePathname, toggle de tema)
+├── <main>{children}</main>
+│    └── página da rota → Server Component
+└── <Footer />          → Server Component
+```
 
-```
-page.tsx (Server Component)
-├── <Navbar />        → Client Component
-├── <Hero />          → Client Component
-├── <About />         → Client Component
-├── <Services />      → Client Component
-├── <RunClub />       → Client Component
-├── <GoogleReview />  → Client Component
-└── <Footer />        → Client Component
-```
+O padrão é manter as páginas como **Server Components** e isolar a interatividade em **Client Components** pontuais. `run-club.tsx`, por exemplo, é um Server Component que só marca `'use client'` no carrossel que envolve os capítulos.
+
+---
+
+## 🎨 Design system
+
+A paleta nasceu no deck do Base Run: neutros quentes, sem acento cromático. São cinco tokens semânticos em `globals.css` que **invertem entre claro e escuro** — por isso nenhum componente usa variante `dark:` para cor.
+
+| Token | Claro | Escuro | Uso |
+|---|---|---|---|
+| `--paper` | `#f2efe6` | `#1a1917` | Fundo da página |
+| `--surface` | `#fbfaf5` | `#232220` | Superfície elevada (cards) |
+| `--ink` | `#1a1917` | `#f2efe6` | Texto principal |
+| `--muted` | `#5f5d58` | `#8f8d85` | Texto de apoio |
+| `--rule` | `#d8d3c6` | `#34332f` | Bordas e réguas |
+
+Use pelo nome (`bg-paper`, `text-ink`, `border-rule`) — nunca hex inline.
+
+**Tipografia:** Archivo (display, caixa alta) · Inter (corpo) · JetBrains Mono (eyebrows e rótulos).
 
 ---
 

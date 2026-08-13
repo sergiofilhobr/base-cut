@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { staggerVariants, delayedFade } from '@/app/lib/motion'
+import { BarberPole } from '@/app/components/ui/barber-pole'
 import { BOOKSY_URL } from '@/app/lib/constants'
 
 /**
@@ -16,7 +17,7 @@ export function Hero() {
       className="
         relative min-h-screen flex flex-col items-center justify-center
         px-6 pt-24 pb-24
-        bg-neutral-50 dark:bg-[#0a0a0a]
+        bg-paper
         overflow-hidden
       "
     >
@@ -26,9 +27,16 @@ export function Hero() {
         className="
           absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
           w-[700px] h-[700px] rounded-full
-          bg-[#c9a96e]/5 dark:bg-[#c9a96e]/[0.04]
+          bg-surface dark:bg-surface
           blur-3xl pointer-events-none
         "
+      />
+
+      {/* Barber pole — poste giratório nas laterais (apenas telas largas) */}
+      <BarberPole className="hidden lg:flex absolute left-10 xl:left-16 top-1/2 -translate-y-1/2 w-11 h-72" />
+      <BarberPole
+        className="hidden lg:flex absolute right-10 xl:right-16 top-1/2 -translate-y-1/2 w-11 h-72"
+        speed={1}
       />
 
       {/* Right-side decorative rule */}
@@ -37,7 +45,7 @@ export function Hero() {
         className="
           absolute top-0 right-0
           w-px h-full
-          bg-gradient-to-b from-transparent via-neutral-200/60 dark:via-neutral-800/60 to-transparent
+          bg-gradient-to-b from-transparent via-rule to-transparent
         "
       />
 
@@ -50,7 +58,7 @@ export function Hero() {
         {/* Eyebrow */}
         <motion.p
           variants={delayedFade(0)}
-          className="mb-6 text-sm font-semibold uppercase tracking-[0.3em] text-[#c9a96e]"
+          className="mb-6 text-sm font-semibold uppercase tracking-[0.3em] text-muted"
         >
           Barbearia de Alto Padrão — Itajaí
         </motion.p>
@@ -61,12 +69,12 @@ export function Hero() {
           className="
             text-5xl sm:text-7xl md:text-8xl
             font-black leading-[0.95] tracking-tight
-            text-neutral-900 dark:text-neutral-50
+            text-ink
             mb-8
           "
         >
           PRECISÃO{' '}
-          <span className="font-extralight text-neutral-400 dark:text-neutral-600">
+          <span className="font-extralight text-muted">
             É A BASE.
           </span>
         </motion.h1>
@@ -76,7 +84,7 @@ export function Hero() {
           variants={delayedFade(0.2)}
           className="
             text-base sm:text-lg leading-relaxed max-w-xl
-            text-neutral-600 dark:text-neutral-400
+            text-muted
             mb-12
           "
         >
@@ -95,10 +103,8 @@ export function Hero() {
               group inline-flex items-center gap-2
               px-8 py-4 rounded-full
               text-sm sm:text-base font-bold tracking-wide uppercase
-              bg-neutral-900 text-neutral-50
-              dark:bg-neutral-50 dark:text-neutral-900
-              shadow-lg shadow-neutral-900/10 dark:shadow-neutral-50/5
-              hover:scale-105 hover:shadow-xl hover:shadow-neutral-900/20
+              bg-ink text-paper
+              hover:scale-105
               active:scale-100
               transition-all duration-300 ease-out
             "
@@ -123,22 +129,6 @@ export function Hero() {
         </motion.div>
       </motion.div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.8 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-      >
-        <span className="text-xs tracking-widest uppercase text-neutral-400 dark:text-neutral-600">
-          Scroll
-        </span>
-        <motion.div
-          animate={{ y: [0, 6, 0] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-px h-8 bg-gradient-to-b from-neutral-300 dark:from-neutral-700 to-transparent"
-        />
-      </motion.div>
     </section>
   )
 }

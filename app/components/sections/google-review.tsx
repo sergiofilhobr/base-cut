@@ -13,7 +13,7 @@ export function GoogleReview() {
   return (
     <AnimatedSection
       id="avaliacao"
-      className="py-20 px-6 bg-white dark:bg-neutral-950"
+      className="py-20 px-6 bg-surface"
     >
       <div className="max-w-5xl mx-auto">
         <motion.a
@@ -24,17 +24,17 @@ export function GoogleReview() {
           rel="noopener noreferrer"
           className="
             group block w-full
-            border border-neutral-200 dark:border-neutral-800
-            hover:border-[#c9a96e]/60 dark:hover:border-[#c9a96e]/40
+            border border-rule
+            hover:border-rule dark:hover:border-rule
             rounded-2xl p-8 sm:p-10
-            bg-neutral-50 dark:bg-[#0a0a0a]
-            hover:bg-white dark:hover:bg-neutral-900
+            bg-paper
+            hover:bg-surface
             transition-all duration-300
           "
         >
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
             {/* Google logo */}
-            <div className="shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 shadow-sm">
+            <div className="shrink-0 w-12 h-12 flex items-center justify-center rounded-xl bg-surface border border-rule shadow-sm">
               <svg
                 width="24"
                 height="24"
@@ -52,7 +52,7 @@ export function GoogleReview() {
 
             {/* Text content */}
             <div className="flex-1 text-center sm:text-left">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#c9a96e] mb-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted mb-3">
                 Avaliação no Google
               </p>
 
@@ -69,19 +69,19 @@ export function GoogleReview() {
                     viewBox="0 0 20 20"
                     fill="currentColor"
                     aria-hidden="true"
-                    className="text-[#c9a96e]"
+                    className="text-muted"
                   >
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
                 ))}
-                <span className="ml-1 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                <span className="ml-1 text-sm font-semibold text-muted">
                   5.0
                 </span>
               </div>
 
-              <p className="text-base sm:text-lg font-medium text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              <p className="text-base sm:text-lg font-medium text-muted leading-relaxed">
                 Sua satisfação é a nossa base.{' '}
-                <span className="text-neutral-900 dark:text-neutral-50 font-semibold">
+                <span className="text-ink font-semibold">
                   Avalie sua experiência.
                 </span>
               </p>
@@ -92,11 +92,11 @@ export function GoogleReview() {
               <div
                 className="
                   w-10 h-10 rounded-full flex items-center justify-center
-                  border border-neutral-200 dark:border-neutral-800
-                  group-hover:border-[#c9a96e]/60 dark:group-hover:border-[#c9a96e]/40
-                  group-hover:bg-[#c9a96e]/10
-                  text-neutral-400 dark:text-neutral-600
-                  group-hover:text-[#c9a96e]
+                  border border-rule
+                  group-hover:border-rule dark:group-hover:border-rule
+                  group-hover:bg-surface
+                  text-muted
+                  group-hover:text-ink
                   transition-all duration-300
                 "
               >
