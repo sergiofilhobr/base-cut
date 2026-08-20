@@ -6,15 +6,12 @@ import { animated, useReducedMotion, useSpring } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 
-interface Photo {
-  src: string
-  alt: string
-  width: number
-  height: number
-}
+type LightboxItem =
+  | { kind: 'image'; src: string; alt: string; width: number; height: number }
+  | { kind: 'video'; src: string; poster: string }
 
 interface LightboxProps {
-  photos: readonly Photo[]
+  items: readonly LightboxItem[]
   index: number
   onClose: () => void
   onIndexChange: (index: number) => void
@@ -24,13 +21,14 @@ interface LightboxProps {
  * Lightbox — visualizador em tela cheia, com arrasto pro lado.
  *
  * Reaproveita o motion system do projeto: a mola do react-spring faz o
- * fade de entrada e a troca de foto, o `@use-gesture/react` lê o arrasto
+ * fade de entrada e a troca de item, o `@use-gesture/react` lê o arrasto
  * (mesma dupla do Carousel). Fecha com Esc, clique fora ou o X; navega
- * com setas do teclado, arrasto ou os botões laterais.
+ * com setas do teclado, arrasto ou os botões laterais. Fotos e vídeos
+ * do mural compartilham o mesmo visualizador.
  */
-export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProps) {
+export function Lightbox({ items, index, onClose, onIndexChange }: LightboxProps) {
   const reduce = useReducedMotion()
-  const count = photos.length
+  const count = items.length
   const closeRef = useRef<HTMLButtonElement>(null)
 
   const goTo = useCallback(
@@ -82,14 +80,14 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     [index],
   )
 
-  const photo = photos[index]
+  const item = items[index]
 
   return (
     <animated.div
       style={overlayStyle}
       role="dialog"
       aria-modal="true"
-      aria-label="Visualizador de fotos"
+      aria-label="Visualizador da galeria"
       className="fixed inset-0 z-[60] bg-ink/95 flex items-center justify-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -117,14 +115,27 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         style={photoStyle}
         className="relative max-w-5xl w-full px-16 sm:px-24 touch-pan-y"
       >
-        <Image
-          src={photo.src}
-          alt={photo.alt}
-          width={photo.width}
-          height={photo.height}
-          priority
-          className="block max-h-[80vh] w-auto mx-auto object-contain select-none"
-        />
+        {item.kind === 'image' ? (
+          <Image
+            src={item.src}
+            alt={item.alt}
+            width={item.width}
+            height={item.height}
+            priority
+            className="block max-h-[80vh] w-auto mx-auto object-contain select-none"
+          />
+        ) : (
+          <video
+            src={item.src}
+            poster={item.poster}
+            controls
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="block max-h-[80vh] w-auto mx-auto object-contain select-none"
+          />
+        )}
       </animated.div>
 
       {count > 1 && (
@@ -132,7 +143,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           <button
             type="button"
             onClick={() => goTo(index - 1)}
-            aria-label="Foto anterior"
+            aria-label="Item anterior"
             className="
               absolute left-2 sm:left-6 top-1/2 -translate-y-1/2
               w-11 h-11 flex items-center justify-center text-paper
@@ -147,7 +158,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           <button
             type="button"
             onClick={() => goTo(index + 1)}
-            aria-label="Próxima foto"
+            aria-label="Próximo item"
             className="
               absolute right-2 sm:right-6 top-1/2 -translate-y-1/2
               w-11 h-11 flex items-center justify-center text-paper

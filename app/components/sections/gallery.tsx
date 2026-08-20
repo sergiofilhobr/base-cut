@@ -4,7 +4,7 @@
  * design-system: design.md · designed-as-app
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { animated, useInView, useReducedMotion, useTrail } from '@react-spring/web'
 import { SMOOTH_CONFIG } from '@/app/lib/motion'
@@ -13,8 +13,57 @@ import {
   GALLERY_PHOTOS,
   type GalleryCategory,
 } from '@/app/lib/gallery-photos'
-import { ImageAutoSlider } from '@/app/components/ui/image-auto-slider'
+import { ATENDIMENTO_VIDEOS, RUN_CLUB_VIDEOS } from '@/app/lib/gallery-videos'
+import { VideoAutoSlider } from '@/app/components/ui/video-auto-slider'
 import { Lightbox } from '@/app/components/ui/lightbox'
+import { InstagramCta } from '@/app/components/ui/instagram-cta'
+
+type MuralItem =
+  | {
+      kind: 'image'
+      src: string
+      alt: string
+      width: number
+      height: number
+      category: GalleryCategory
+    }
+  | {
+      kind: 'video'
+      src: string
+      poster: string
+      category: GalleryCategory
+    }
+
+/**
+ * Tile de vídeo do mural — pôster estático por padrão, toca mutado no
+ * hover/foco e volta a pausar ao sair. Em `prefers-reduced-motion` fica só
+ * o pôster, sem autoplay (design.md § Motion).
+ */
+function MuralVideo({ src, poster }: { src: string; poster: string }) {
+  const reduce = useReducedMotion()
+  const ref = useRef<HTMLVideoElement>(null)
+
+  return (
+    <video
+      ref={ref}
+      src={src}
+      poster={poster}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      onMouseEnter={() => {
+        if (!reduce) void ref.current?.play()
+      }}
+      onMouseLeave={() => ref.current?.pause()}
+      onFocus={() => {
+        if (!reduce) void ref.current?.play()
+      }}
+      onBlur={() => ref.current?.pause()}
+      className="block w-full h-auto"
+    />
+  )
+}
 
 /**
  * Gallery — mural fotográfico.
@@ -25,8 +74,7 @@ import { Lightbox } from '@/app/components/ui/lightbox'
  * vazio mostra uma linha de texto só.
  *
  * As fotos entram em cascata ao cruzar a dobra — mesma mola do resto do
- * sistema (design.md § Motion, exceção declarada como em /contato). Em
- * grayscale por padrão, coloridas no hover/focus: o convite é olhar de perto.
+ * sistema (design.md § Motion, exceção declarada como em /contato).
  */
 export function Gallery() {
   const reduce = useReducedMotion()
@@ -34,18 +82,21 @@ export function Gallery() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [category, setCategory] = useState<GalleryCategory>('todos')
 
-  const photos = useMemo(
-    () =>
-      category === 'todos'
-        ? GALLERY_PHOTOS
-        : GALLERY_PHOTOS.filter((p) => p.category === category),
-    [category],
-  )
+  const items = useMemo(() => {
+    const all: MuralItem[] = [
+      ...GALLERY_PHOTOS.map((p) => ({ kind: 'image' as const, ...p })),
+      ...ATENDIMENTO_VIDEOS.map((v) => ({ kind: 'video' as const, ...v })),
+      ...RUN_CLUB_VIDEOS.map((v) => ({ kind: 'video' as const, ...v })),
+    ]
+    return category === 'todos'
+      ? all
+      : all.filter((item) => item.category === category)
+  }, [category])
 
   const from = reduce ? { opacity: 0 } : { opacity: 0, y: 32 }
   const to = reduce ? { opacity: 1 } : { opacity: 1, y: 0 }
 
-  const trail = useTrail(photos.length, {
+  const trail = useTrail(items.length, {
     from,
     to: inView ? to : from,
     config: reduce ? { duration: 150 } : SMOOTH_CONFIG,
@@ -74,8 +125,8 @@ export function Gallery() {
 
         <div className="sm:pl-[12%] max-w-2xl">
           <p className="text-base sm:text-lg leading-relaxed text-muted">
-            O barbeiro e o ambiente da casa, em foto real — sem still, sem
-            produção.
+            O barbeiro e o ambiente da casa, em foto real — nada de ensaio,
+            nada de produção.
           </p>
         </div>
 
@@ -114,44 +165,57 @@ export function Gallery() {
       </div>
 
       <div className="pb-16">
-        <ImageAutoSlider />
+        <VideoAutoSlider />
       </div>
 
-      {photos.length > 0 ? (
+      {items.length > 0 ? (
         <div
           ref={ref}
           className="max-w-[1600px] mx-auto px-6 sm:px-10 pb-28 columns-2 lg:columns-3 gap-4 sm:gap-6"
         >
           {trail.map((style, i) => {
-            const { src, alt, width, height } = photos[i]
+            const item = items[i]
             return (
               <animated.figure
-                key={src}
+                key={item.src}
                 style={style}
                 className="mb-4 sm:mb-6 break-inside-avoid border border-rule"
               >
-                <button
-                  type="button"
-                  onClick={() => setOpenIndex(i)}
-                  aria-label={`Ampliar foto: ${alt}`}
-                  className="
-                    block w-full cursor-pointer
-                    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
-                    focus-visible:outline-ink
-                  "
-                >
-                  <Image
-                    src={src}
-                    alt={alt}
-                    width={width}
-                    height={height}
+                {item.kind === 'image' ? (
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex(i)}
+                    aria-label={`Ampliar foto: ${item.alt}`}
                     className="
-                      block w-full h-auto
-                      grayscale hover:grayscale-0
-                      transition-[filter] duration-300
+                      block w-full cursor-pointer
+                      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+                      focus-visible:outline-ink
                     "
-                  />
-                </button>
+                  >
+                    <Image
+                      src={item.src}
+                      alt={item.alt}
+                      width={item.width}
+                      height={item.height}
+                      className="
+                        block w-full h-auto
+                      "
+                    />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex(i)}
+                    aria-label="Assistir vídeo do Base Run"
+                    className="
+                      block w-full cursor-pointer
+                      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+                      focus-visible:outline-ink
+                    "
+                  >
+                    <MuralVideo src={item.src} poster={item.poster} />
+                  </button>
+                )}
               </animated.figure>
             )
           })}
@@ -160,15 +224,21 @@ export function Gallery() {
         <div className="px-6 sm:px-10 pb-28">
           <div className="sm:pl-[12%] max-w-2xl border-t border-rule pt-8">
             <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted">
-              Fotos a caminho — volte em breve.
+              Conteúdo a caminho — volte em breve.
             </p>
           </div>
         </div>
       )}
 
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-10 pb-28">
+        <div className="sm:pl-[12%] max-w-2xl">
+          <InstagramCta />
+        </div>
+      </div>
+
       {openIndex !== null && (
         <Lightbox
-          photos={photos}
+          items={items}
           index={openIndex}
           onClose={() => setOpenIndex(null)}
           onIndexChange={setOpenIndex}

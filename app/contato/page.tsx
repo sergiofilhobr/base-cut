@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Location } from '@/app/components/sections/location'
 import { GoogleReview } from '@/app/components/sections/google-review'
+import { InstagramCta } from '@/app/components/ui/instagram-cta'
 
 export const metadata: Metadata = {
   title: 'Contato e Avaliações — Base Cut Barbearia',
@@ -29,6 +30,10 @@ export default function ContatoPage() {
       <div className="max-w-[1600px] grid gap-12 lg:grid-cols-2 lg:gap-16">
         <Location />
         <GoogleReview />
+      </div>
+
+      <div className="max-w-[1600px] mt-16">
+        <InstagramCta />
       </div>
     </div>
   )

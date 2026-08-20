@@ -33,8 +33,9 @@ export const metadata: Metadata = {
     'Barbearia de alto padrão em Itajaí. Corte, barba e acabamentos com precisão e experiência completa. Agende pelo Booksy.',
   keywords: ['barbearia', 'itajaí', 'corte', 'barba', 'base cut'],
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.png',
   },
   openGraph: {
     title: 'Base Cut Barbearia – Itajaí',

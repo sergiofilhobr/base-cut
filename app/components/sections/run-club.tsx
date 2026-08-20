@@ -86,6 +86,43 @@ function Display({ children }: { children: ReactNode }) {
 }
 
 /**
+ * Reel do Base Run no lugar da "foto do grupo". Vertical (9:16), como os
+ * vídeos de celular — nada de faixa horizontal cortando o conteúdo. No
+ * desktop fica numa coluna ao lado da régua de dados; no mobile, um cartão
+ * retrato centralizado. Respeita `prefers-reduced-motion`: pôster estático
+ * em vez de autoplay.
+ */
+function RunReel() {
+  const reduce = useReducedMotion()
+  return (
+    <figure>
+      <div className="mx-auto w-48 sm:w-full aspect-[9/16] border border-[var(--rule)] overflow-hidden">
+        {reduce ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/assets/videos/base-run-01.jpg"
+            alt="Base Run — corrida de domingo saindo da Base Cut"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <video
+            src="/assets/videos/base-run-01.mp4"
+            poster="/assets/videos/base-run-01.jpg"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="w-full h-full object-cover"
+          />
+        )}
+      </div>
+      <figcaption className="sr-only">Base Run — primeira edição.</figcaption>
+    </figure>
+  )
+}
+
+/**
  * Base Run — deck de 5 capítulos.
  * Client Component: cada capítulo anima com a mola do react-spring conforme
  * ganha ou perde foco no carrossel (design.md § Motion — exceção declarada,
@@ -132,41 +169,25 @@ export function RunClub() {
       <Chapter index={2} label="Cada um no seu ritmo">
         <Display>Cada um no seu ritmo</Display>
 
-        {/* Slot de imagem — aguardando foto real do grupo.
-            max-h fixo: sem ele, este era o capítulo mais alto do deck e
-            empurrava os controles do carrossel pra fora da tela. */}
-        <figure className="mt-6">
-          <div
-            className="
-              aspect-[4/3] sm:aspect-[21/9] w-full max-h-[130px]
-              border border-dashed border-[var(--muted)]/50
-              flex items-center justify-center
-            "
-          >
-            <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-[var(--muted)]">
-              Foto do grupo — a inserir
-            </span>
-          </div>
-          <figcaption className="sr-only">
-            Espaço reservado para a fotografia do Base Run.
-          </figcaption>
-        </figure>
+        <div className="mt-6 grid gap-6 sm:grid-cols-[200px_1fr] sm:gap-10 sm:items-center">
+          <RunReel />
 
-        <dl className="mt-6 divide-y divide-[var(--muted)]/30 border-y border-[var(--muted)]/30">
-          {PACE.map(({ label, value }) => (
-            <div
-              key={label}
-              className="flex items-baseline justify-between gap-6 py-4"
-            >
-              <dt className="font-mono text-[11px] uppercase tracking-[0.25em] text-[var(--muted)]">
-                {label}
-              </dt>
-              <dd className="text-base sm:text-lg text-[var(--ink)] text-right">
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+          <dl className="divide-y divide-[var(--muted)]/30 border-y border-[var(--muted)]/30">
+            {PACE.map(({ label, value }) => (
+              <div
+                key={label}
+                className="flex items-baseline justify-between gap-6 py-4"
+              >
+                <dt className="font-mono text-[11px] uppercase tracking-[0.25em] text-[var(--muted)]">
+                  {label}
+                </dt>
+                <dd className="text-base sm:text-lg text-[var(--ink)] text-right">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </Chapter>
 
       {/* 04 — O benefício */}

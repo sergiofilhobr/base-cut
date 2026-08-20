@@ -166,7 +166,7 @@ body {
   }
 }
 
-/* ── Faixa de fotos em loop (ImageAutoSlider) ──
+/* ── Faixa de reels em loop (VideoAutoSlider) ──
    Duas cópias da lista lado a lado; andar exatamente metade da largura
    total pousa de volta no início sem costura. */
 .marquee-track {

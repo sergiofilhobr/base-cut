@@ -4,6 +4,9 @@ import type { LucideIcon } from 'lucide-react'
 export const BOOKSY_URL =
   'https://booksy.com/pt-br/instant-experiences/widget/404263?utm_source=ig&utm_medium=social&utm_content=link_in_bio'
 
+export const INSTAGRAM_URL = 'https://instagram.com/basecut_'
+export const INSTAGRAM_HANDLE = '@basecut_'
+
 export const GOOGLE_REVIEW_URL =
   'https://www.google.com/search?kgmid=/g/11n3q826nd&hl=pt-BR&q=BASE+CUT+BARBEARIA&shndl=30&source=sh/x/loc/osrp/m1/3&kgs=c1b96cf83428199a&shem=shrtsdl&utm_source=shrtsdl,sh/x/loc/osrp/m1/3'
 

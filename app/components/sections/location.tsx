@@ -11,8 +11,8 @@ import { RatingBadge } from '@/app/components/ui/rating-badge'
  *
  * Vive na coluna esquerda de /contato, lado a lado com as avaliações — as
  * duas metades da mesma pergunta ("onde é" + "vale a pena") cabem numa
- * dobra só. O mapa do Google entra em grayscale — o cromático dele não faz
- * parte da paleta; o que importa é o ponto, o endereço e a régua.
+ * dobra só. O mapa do Google entra em cor — o que importa é o ponto, o
+ * endereço e a régua.
  */
 export function Location() {
   return (
@@ -49,7 +49,7 @@ export function Location() {
           loading="lazy"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"
-          className="block w-full h-[220px] sm:h-[320px] lg:h-[380px] grayscale"
+          className="block w-full h-[220px] sm:h-[320px] lg:h-[380px]"
         />
       </div>
     </div>
