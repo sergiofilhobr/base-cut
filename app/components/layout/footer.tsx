@@ -60,10 +60,10 @@ export function Footer() {
         </dl>
 
         <p className="mt-10 font-mono text-[11px] leading-loose text-muted max-w-2xl">
-          Base Cut Barbearia, Itajaí — Santa Catarina. Feito por{' '}
+          Base Cut Barbearia, Itajaí — Santa Catarina. Desenvolvido por{' '}
           <a
             id="dev-signature"
-            href="https://instagram.com/sergiofilhobr"
+            href="https://oximorotech.com.br"
             target="_blank"
             rel="noopener noreferrer"
             className="
@@ -73,7 +73,7 @@ export function Footer() {
               transition-colors duration-200
             "
           >
-            @sergiofilhobr
+            Oxímoro Tech
           </a>
           . © {new Date().getFullYear()}.
         </p>

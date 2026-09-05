@@ -32,6 +32,9 @@ export const metadata: Metadata = {
   description:
     'Barbearia de alto padrão em Itajaí. Corte, barba e acabamentos com precisão e experiência completa. Agende pelo Booksy.',
   keywords: ['barbearia', 'itajaí', 'corte', 'barba', 'base cut'],
+  authors: [{ name: 'Oxímoro Tech', url: 'https://oximorotech.com.br' }],
+  creator: 'Oxímoro Tech',
+  publisher: 'Oxímoro Tech',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',

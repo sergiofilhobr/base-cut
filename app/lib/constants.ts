@@ -59,3 +59,10 @@ export const SERVICES: Service[] = [
     description: 'Depilação de nariz e orelha, sobrancelha.',
   },
 ]
+
+/** Instagram pessoal do Bruno — o barbeiro da casa. */
+export const BARBER_INSTAGRAM_URL = 'https://instagram.com/brunobasecut'
+export const BARBER_INSTAGRAM_HANDLE = '@brunobasecut'
+
+/** Grupo do Base Run Club no WhatsApp. */
+export const BASE_RUN_WHATSAPP_URL = 'https://chat.whatsapp.com/Drn8xiZJRrM5LLQKLo85ZC'
