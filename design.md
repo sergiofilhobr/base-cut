@@ -14,9 +14,35 @@ de SaaS, atmospheric ou playful no brief.
 - **Marketing pages:** Marquee Hero — `/`. Varia: tratamento do enunciado.
 - **Content pages:** Catalogue — `/servicos`, `/contato`, `/galeria`. Varia: densidade da lista.
 - **Statement pages:** Manifesto — `/sobre`.
+- **Index pages:** Index-First — `/links`. A página **é** a lista.
 - **Variante declarada:** `/run-club` usa um deck de capítulos em carrossel,
   herdado do material impresso do Base Run. É a única página que foge das
   famílias acima, e foge de propósito: a DNA veio do deck da marca.
+
+### `/links` — a única rota sem chrome
+
+`/links` é a árvore de links da bio: quem chega veio de um @ no Instagram com
+um destino em mente. Ela carrega o **próprio** chrome — sem nav N7, sem footer
+Ft4 — porque a lista já é a navegação inteira. O `SiteChrome`
+(`app/components/layout/site-chrome.tsx`) desliga os dois nessa rota, no
+servidor, então nada de chrome chega ao HTML.
+
+Três emendas ao sistema, declaradas aqui porque valem **só** nessa rota:
+
+1. **O barber pole aparece fora da home.** Sem nav não há wordmark de header, e
+   sem wordmark a marca precisaria de um substituto. O poste ocupa o lugar do
+   mini do header — ao lado do wordmark, agora em todo viewport, não só a
+   partir de `lg`.
+2. **Slabs no lugar de régua pura.** Content pages são tipografia e régua, sem
+   cards. Aqui a caixa de 2px é o link — na Index-First "os links são os
+   botões", e a caixa é o mesmo material da nav e do footer (2px, sem raio, sem
+   sombra). Não é card: não tem fundo próprio, não empilha conteúdo, não tem
+   sombra.
+3. **Colophon reduzido a uma linha.** O Ft4 completo não cabe numa página cuja
+   razão de existir é caber num polegar.
+
+Rótulos de grupo ("Redes", "No site") vivem empilhados **acima** da lista, nunca
+ao lado — é a lei da coluna única.
 
 ## Theme
 
@@ -103,9 +129,10 @@ vertical varia de propósito entre as famílias (ver *Per-page allowances*).
 - A ausência de acento cromático.
 - O par Archivo + Inter + JetBrains Mono.
 - A voz de CTA (retângulo sólido, mono caixa alta).
-- Nav N7 e footer Ft4.
+- Nav N7 e footer Ft4 — exceto em `/links`, que declara chrome próprio.
 - O barber pole: grande no canto do main **só na home**; nas demais rotas,
-  versão mini no header ao lado do wordmark (visível a partir de `lg`).
+  versão mini no header ao lado do wordmark (visível a partir de `lg`) —
+  exceto em `/links`, que não tem header (ver a seção da rota).
 - Altura mínima de viewport: o `main` sempre preenche o espaço entre nav e footer.
 
 ## What pages MAY differ on

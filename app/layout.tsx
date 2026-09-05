@@ -4,6 +4,7 @@ import './globals.css'
 import { Providers } from './components/providers'
 import { Navbar } from './components/layout/navbar'
 import { Footer } from './components/layout/footer'
+import { SiteChrome } from './components/layout/site-chrome'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -61,11 +62,15 @@ export default function RootLayout({
     >
       <body className="bg-paper text-ink antialiased transition-colors duration-300 min-h-dvh flex flex-col">
         <Providers>
-          <Navbar />
+          <SiteChrome>
+            <Navbar />
+          </SiteChrome>
           {/* min-h-dvh + flex-1: o main sempre preenche o espaço entre navbar e
               footer, então toda página tem a mesma altura mínima. */}
           <main className="relative flex-1 overflow-x-hidden">{children}</main>
-          <Footer />
+          <SiteChrome>
+            <Footer />
+          </SiteChrome>
         </Providers>
       </body>
     </html>
