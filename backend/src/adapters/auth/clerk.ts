@@ -1,5 +1,6 @@
 import { createClerkClient, verifyToken } from "@clerk/backend";
-import type { Autenticacao, Membro, SessaoCliente } from "../../ports/autenticacao.ts";
+import { papelDe } from "../../domain/casa/regras.ts";
+import type { Autenticacao, SessaoCliente } from "../../ports/autenticacao.ts";
 
 export function criarAutenticacaoClerk(opcoes: {
   secretKey: string | undefined;
@@ -26,8 +27,7 @@ export function criarAutenticacaoClerk(opcoes: {
         const lista = await clerk.users.getOrganizationMembershipList({ userId });
         const daCasa = lista.data.find((item) => item.organization.id === opcoes.orgId);
         if (!daCasa) return null;
-        const papel: Membro["papel"] = daCasa.role === "org:admin" ? "admin" : "membro";
-        return { userId, papel };
+        return { userId, papel: papelDe(daCasa.role) };
       } catch {
         return null;
       }

@@ -1,4 +1,4 @@
-export type Membro = { userId: string; papel: "admin" | "membro" };
+export type Membro = { userId: string; papel: "admin" | "barbeiro" | "recepcao" | "membro" };
 export type SessaoCliente = { userId: string; email: string };
 
 export interface Autenticacao {

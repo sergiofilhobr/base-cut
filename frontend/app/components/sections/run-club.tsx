@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { animated, useReducedMotion, useSpring } from '@react-spring/web'
 import { Carousel, useCarouselActive } from '@/app/components/ui/carousel'
 import { SMOOTH_CONFIG } from '@/app/lib/motion'
@@ -245,6 +245,67 @@ export function RunClub() {
         </a>
       </Chapter>
       </Carousel>
+      <InscricaoRun />
     </div>
+  )
+}
+
+function InscricaoRun() {
+  const [eventos, setEventos] = useState<Array<{ id: string; nome: string }>>([])
+  const [eventoId, setEventoId] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/run')
+      .then((resposta) => (resposta.ok ? resposta.json() : { eventos: [] }))
+      .then((dados: { eventos: Array<{ id: string; nome: string }> }) => {
+        setEventos(dados.eventos)
+        setEventoId(dados.eventos[0]?.id ?? '')
+      })
+      .catch(() => setEventos([]))
+  }, [])
+
+  if (eventos.length === 0) return null
+
+  return (
+    <form
+      className="mx-auto flex max-w-md flex-col gap-3 px-6 pb-24"
+      onSubmit={async (evento) => {
+        evento.preventDefault()
+        const resposta = await fetch(`/api/run/${eventoId}/inscrever`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ telefone }),
+        })
+        if (resposta.status === 409) {
+          setAviso('A lista encheu ou esse telefone já está nela.')
+          return
+        }
+        if (resposta.status === 422) {
+          setAviso('A inscrição pede uma ficha da casa.')
+          return
+        }
+        setAviso(resposta.ok ? 'Você está na corrida.' : 'Não entrou. Tente de novo.')
+      }}
+    >
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Lista da corrida</p>
+      <select value={eventoId} onChange={(e) => setEventoId(e.target.value)} className="border-b border-ink bg-transparent py-2 text-ink">
+        {eventos.map((item) => (
+          <option key={item.id} value={item.id}>{item.nome}</option>
+        ))}
+      </select>
+      <input
+        required
+        value={telefone}
+        onChange={(e) => setTelefone(e.target.value)}
+        placeholder="Telefone da ficha"
+        className="border-b border-ink bg-transparent py-2 text-ink"
+      />
+      <button type="submit" className="min-h-12 bg-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-paper">
+        Inscrever
+      </button>
+      {aviso && <p className="text-sm text-ink">{aviso}</p>}
+    </form>
   )
 }

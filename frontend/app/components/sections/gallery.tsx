@@ -4,7 +4,7 @@
  * design-system: design.md · designed-as-app
  */
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { animated, useInView, useReducedMotion, useTrail } from '@react-spring/web'
 import { SMOOTH_CONFIG } from '@/app/lib/motion'
@@ -81,17 +81,33 @@ export function Gallery() {
   const [ref, inView] = useInView({ once: true, amount: 0.05 })
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [category, setCategory] = useState<GalleryCategory>('todos')
+  const [daCasa, setDaCasa] = useState<Array<{ src: string; alt: string }>>([])
+
+  useEffect(() => {
+    fetch('/api/galeria')
+      .then((resposta) => (resposta.ok ? resposta.json() : { fotos: [] }))
+      .then((dados: { fotos?: Array<{ src: string; alt: string }> }) => setDaCasa(dados.fotos ?? []))
+      .catch(() => setDaCasa([]))
+  }, [])
 
   const items = useMemo(() => {
     const all: MuralItem[] = [
       ...GALLERY_PHOTOS.map((p) => ({ kind: 'image' as const, ...p })),
+      ...daCasa.map((foto) => ({
+        kind: 'image' as const,
+        src: foto.src,
+        alt: foto.alt,
+        width: 1200,
+        height: 1600,
+        category: 'atendimentos' as const,
+      })),
       ...ATENDIMENTO_VIDEOS.map((v) => ({ kind: 'video' as const, ...v })),
       ...RUN_CLUB_VIDEOS.map((v) => ({ kind: 'video' as const, ...v })),
     ]
     return category === 'todos'
       ? all
       : all.filter((item) => item.category === category)
-  }, [category])
+  }, [category, daCasa])
 
   const from = reduce ? { opacity: 0 } : { opacity: 0, y: 32 }
   const to = reduce ? { opacity: 1 } : { opacity: 1, y: 0 }
@@ -192,15 +208,18 @@ export function Gallery() {
                       focus-visible:outline-ink
                     "
                   >
-                    <Image
-                      src={item.src}
-                      alt={item.alt}
-                      width={item.width}
-                      height={item.height}
-                      className="
-                        block w-full h-auto
-                      "
-                    />
+                    {item.src.startsWith('/') ? (
+                      <Image
+                        src={item.src}
+                        alt={item.alt}
+                        width={item.width}
+                        height={item.height}
+                        className="block w-full h-auto"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.src} alt={item.alt} className="block w-full h-auto" />
+                    )}
                   </button>
                 ) : (
                   <button
