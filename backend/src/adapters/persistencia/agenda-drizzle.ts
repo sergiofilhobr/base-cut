@@ -6,7 +6,10 @@ import type { EstadoAgendamento } from "../../domain/agenda/regras.ts";
 import type {
   AgendamentoDetalhe,
   AgendamentoGravado,
+  Bloqueio,
   Cliente,
+  ItemAgendamento,
+  LinhaDaAgenda,
   NovoAgendamento,
   RepositorioAgenda,
   Servico,
@@ -170,6 +173,118 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
         .where(eq(agendamentos.id, id));
     },
 
+    async listarAgenda(barbeiroId, de, ate) {
+      const linhas = await db
+        .select({
+          id: agendamentos.id,
+          barbeiroId: agendamentos.barbeiroId,
+          clienteId: agendamentos.clienteId,
+          nome: clientes.nome,
+          telefone: clientes.telefone,
+          inicio: agendamentos.inicio,
+          fim: agendamentos.fim,
+          estado: agendamentos.estado,
+          presencaAvisadaEm: agendamentos.presencaAvisadaEm,
+          criadoEm: agendamentos.criadoEm,
+        })
+        .from(agendamentos)
+        .innerJoin(clientes, eq(clientes.id, agendamentos.clienteId))
+        .where(
+          and(
+            eq(agendamentos.barbeiroId, barbeiroId),
+            lt(agendamentos.inicio, ate),
+            gt(agendamentos.fim, de),
+          ),
+        )
+        .orderBy(asc(agendamentos.inicio));
+      return anexarItens(db, linhas);
+    },
+
+    async agendamentosCriadosDesde(barbeiroId, desde) {
+      const linhas = await db
+        .select({
+          id: agendamentos.id,
+          barbeiroId: agendamentos.barbeiroId,
+          clienteId: agendamentos.clienteId,
+          nome: clientes.nome,
+          telefone: clientes.telefone,
+          inicio: agendamentos.inicio,
+          fim: agendamentos.fim,
+          estado: agendamentos.estado,
+          presencaAvisadaEm: agendamentos.presencaAvisadaEm,
+          criadoEm: agendamentos.criadoEm,
+        })
+        .from(agendamentos)
+        .innerJoin(clientes, eq(clientes.id, agendamentos.clienteId))
+        .where(
+          and(
+            eq(agendamentos.barbeiroId, barbeiroId),
+            eq(agendamentos.estado, "confirmado"),
+            gt(agendamentos.criadoEm, desde),
+          ),
+        )
+        .orderBy(asc(agendamentos.criadoEm));
+      return anexarItens(db, linhas);
+    },
+
+    async definirEstado(id, estado) {
+      await db.update(agendamentos).set({ estado }).where(eq(agendamentos.id, id));
+    },
+
+    async substituirItens(id, itens, fim) {
+      await db.transaction(async (transacao) => {
+        await transacao.update(agendamentos).set({ fim }).where(eq(agendamentos.id, id));
+        await transacao.delete(itensAgendamento).where(eq(itensAgendamento.agendamentoId, id));
+        if (itens.length === 0) return;
+        await transacao.insert(itensAgendamento).values(
+          itens.map((item) => ({
+            agendamentoId: id,
+            servicoId: item.servicoId,
+            nome: item.nome,
+            duracaoMinutos: item.duracaoMinutos,
+            precoCentavos: item.precoCentavos,
+          })),
+        );
+      });
+    },
+
+    async gravarBloqueio(dados) {
+      const [linha] = await db
+        .insert(indisponibilidades)
+        .values(dados)
+        .returning({
+          id: indisponibilidades.id,
+          inicio: indisponibilidades.inicio,
+          fim: indisponibilidades.fim,
+          motivo: indisponibilidades.motivo,
+        });
+      return { ...linha, motivo: linha.motivo as Bloqueio["motivo"] };
+    },
+
+    async listarBloqueios(barbeiroId, de, ate) {
+      const linhas = await db
+        .select({
+          id: indisponibilidades.id,
+          inicio: indisponibilidades.inicio,
+          fim: indisponibilidades.fim,
+          motivo: indisponibilidades.motivo,
+        })
+        .from(indisponibilidades)
+        .where(
+          and(
+            eq(indisponibilidades.barbeiroId, barbeiroId),
+            lt(indisponibilidades.inicio, ate),
+            gt(indisponibilidades.fim, de),
+          ),
+        )
+        .orderBy(asc(indisponibilidades.inicio));
+      return linhas.map((linha) => ({ ...linha, motivo: linha.motivo as Bloqueio["motivo"] }));
+    },
+
+    async removerBloqueio(id) {
+      await db.delete(indisponibilidades).where(eq(indisponibilidades.id, id));
+    },
+
     async indisponibilidades(barbeiroId, de, ate) {
       return db
         .select({ inicio: indisponibilidades.inicio, fim: indisponibilidades.fim })
@@ -296,6 +411,53 @@ function paraServico(linha: typeof servicos.$inferSelect): Servico {
     precoCentavos: linha.precoCentavos,
     ativo: linha.ativo,
   };
+}
+
+async function anexarItens(
+  db: BancoDrizzle,
+  linhas: Array<{
+    id: string;
+    barbeiroId: string;
+    clienteId: string;
+    nome: string;
+    telefone: string;
+    inicio: Date;
+    fim: Date;
+    estado: string;
+    presencaAvisadaEm: Date | null;
+    criadoEm: Date;
+  }>,
+): Promise<LinhaDaAgenda[]> {
+  if (linhas.length === 0) return [];
+  const itens = await db
+    .select({
+      agendamentoId: itensAgendamento.agendamentoId,
+      servicoId: itensAgendamento.servicoId,
+      nome: itensAgendamento.nome,
+      duracaoMinutos: itensAgendamento.duracaoMinutos,
+      precoCentavos: itensAgendamento.precoCentavos,
+    })
+    .from(itensAgendamento)
+    .where(
+      inArray(
+        itensAgendamento.agendamentoId,
+        linhas.map((linha) => linha.id),
+      ),
+    );
+  return linhas.map((linha) => ({
+    ...linha,
+    estado: linha.estado as EstadoAgendamento,
+    itens: itens
+      .filter((item) => item.agendamentoId === linha.id)
+      .map(
+        (item): ItemAgendamento => ({
+          servicoId: item.servicoId,
+          nome: item.nome,
+          duracaoMinutos: item.duracaoMinutos,
+          precoCentavos: item.precoCentavos,
+        }),
+      ),
+  }));
 }
 
 function paraCliente(linha: typeof clientes.$inferSelect): Cliente {
