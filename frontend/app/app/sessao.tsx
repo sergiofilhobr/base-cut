@@ -1,6 +1,7 @@
 'use client'
 
 import { ClerkProvider, useAuth, useUser } from '@clerk/nextjs'
+import { ptBR } from '@clerk/localizations'
 import { useRouter } from 'next/navigation'
 import {
   createContext,
@@ -59,6 +60,7 @@ export function SessaoProvider({ children }: { children: ReactNode }) {
         signInUrl="/app/entrar"
         signUpUrl="/app/cadastro"
         afterSignOutUrl="/app/entrar"
+        localization={ptBR}
         appearance={{ variables: { borderRadius: '0px' } }}
       >
         <SessaoClerk>{children}</SessaoClerk>

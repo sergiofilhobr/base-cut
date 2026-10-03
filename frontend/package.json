@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/localizations": "^4.21.2",
     "@clerk/nextjs": "^7.9.10",
     "@react-spring/web": "^10.1.2",
     "@use-gesture/react": "^10.3.1",
