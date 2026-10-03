@@ -5,6 +5,7 @@ import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alt
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
+import { excluirFicha, exportarFicha } from "../../application/lgpd.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
 import { alterarServicosPelaEquipe, moverPelaEquipe } from "../../application/operar-agenda.ts";
@@ -100,16 +101,24 @@ export function criarAplicacao(deps: {
     const corpo = await c.req.json().catch(() => null);
     const pedido = lerPedido(corpo);
     if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
+    if (!consentiu(corpo)) return c.json({ erro: "sem_consentimento" }, 422);
 
     const resultado = await marcarAgendamento(deps.agenda, deps.relogio, {
       ...pedido,
       origem: "site",
       barbeiroId: pedido.barbeiroId,
+      consentimentoEm: deps.relogio.agora(),
     });
     if (!resultado.ok) {
       const status = resultado.erro === "horario_indisponivel" || resultado.erro === "email_de_outra_ficha" ? 409 : 422;
       return c.json({ erro: resultado.erro }, status);
     }
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: resultado.agendamento.id,
+      clienteId: resultado.agendamento.clienteId,
+      acao: "criacao",
+      ator: `cliente:${pedido.telefone}`,
+    });
     await avisarMarcacao(deps.mensagens, deps.mensageiro, {
       id: resultado.agendamento.id,
       nome: pedido.nome,
@@ -146,6 +155,15 @@ export function criarAplicacao(deps: {
       telefone,
     });
     if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    const detalhe = await deps.agenda.buscarAgendamento(c.req.param("id"));
+    if (detalhe) {
+      await deps.agenda.registrarAuditoria({
+        agendamentoId: detalhe.id,
+        clienteId: detalhe.clienteId,
+        acao: "cancelamento",
+        ator: `cliente:${telefone}`,
+      });
+    }
     return c.json({ ok: true });
   });
 
@@ -160,11 +178,38 @@ export function criarAplicacao(deps: {
       inicio,
     });
     if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    const detalhe = await deps.agenda.buscarAgendamento(c.req.param("id"));
+    if (detalhe) {
+      await deps.agenda.registrarAuditoria({
+        agendamentoId: detalhe.id,
+        clienteId: detalhe.clienteId,
+        acao: "reagendamento",
+        ator: `cliente:${telefone}`,
+      });
+    }
     return c.json({
       ok: true,
       inicio: resultado.inicio.toISOString(),
       fim: resultado.fim.toISOString(),
     });
+  });
+
+  app.post("/api/privacidade/exportar", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const pedido = pedidoDeFicha(corpo);
+    if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await exportarFicha(deps.agenda, pedido);
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, 404);
+    return c.json(resultado.ficha);
+  });
+
+  app.post("/api/privacidade/excluir", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const pedido = pedidoDeFicha(corpo);
+    if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await excluirFicha(deps.agenda, pedido);
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, 404);
+    return c.json({ ok: true });
   });
 
   app.post("/api/whatsapp/entrada", async (c) => {
@@ -242,7 +287,8 @@ export function criarAplicacao(deps: {
   });
 
   app.post("/api/painel/encaixe", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const equipe = await membro(c, deps);
+    if (!equipe) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
     const pedido = lerEncaixe(corpo);
     if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
@@ -262,11 +308,18 @@ export function criarAplicacao(deps: {
       telefoneDoBruno: deps.telefoneDoBruno,
       urlDoSite: deps.urlDoSite,
     });
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: resultado.agendamento.id,
+      clienteId: resultado.agendamento.clienteId,
+      acao: "encaixe",
+      ator: `equipe:${equipe.userId}`,
+    });
     return c.json({ id: resultado.agendamento.id }, 201);
   });
 
   app.post("/api/painel/agendamentos/:id/mover", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const equipe = await membro(c, deps);
+    if (!equipe) return c.json({ erro: "nao_autorizado" }, 401);
     const inicio = inicioDoCorpo(await c.req.json().catch(() => null));
     if (!inicio) return c.json({ erro: "pedido_invalido" }, 400);
     const resultado = await moverPelaEquipe(deps.agenda, deps.relogio, {
@@ -274,11 +327,21 @@ export function criarAplicacao(deps: {
       inicio,
     });
     if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    const movido = await deps.agenda.buscarAgendamento(c.req.param("id"));
+    if (movido) {
+      await deps.agenda.registrarAuditoria({
+        agendamentoId: movido.id,
+        clienteId: movido.clienteId,
+        acao: "reagendamento",
+        ator: `equipe:${equipe.userId}`,
+      });
+    }
     return c.json({ ok: true, inicio: resultado.inicio.toISOString(), fim: resultado.fim.toISOString() });
   });
 
   app.post("/api/painel/agendamentos/:id/servicos", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const equipe = await membro(c, deps);
+    if (!equipe) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
     const servicoIds = servicosDoCorpo(corpo);
     if (!servicoIds) return c.json({ erro: "pedido_invalido" }, 400);
@@ -287,11 +350,21 @@ export function criarAplicacao(deps: {
       servicoIds,
     });
     if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    const alterado = await deps.agenda.buscarAgendamento(c.req.param("id"));
+    if (alterado) {
+      await deps.agenda.registrarAuditoria({
+        agendamentoId: alterado.id,
+        clienteId: alterado.clienteId,
+        acao: "servicos",
+        ator: `equipe:${equipe.userId}`,
+      });
+    }
     return c.json({ ok: true, fim: resultado.fim.toISOString() });
   });
 
   app.post("/api/painel/agendamentos/:id/estado", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const equipe = await membro(c, deps);
+    if (!equipe) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
     const estado = estadoDaCasa(corpo);
     if (!estado) return c.json({ erro: "pedido_invalido" }, 400);
@@ -302,6 +375,12 @@ export function criarAplicacao(deps: {
     } else {
       await deps.agenda.definirEstado(detalhe.id, estado);
     }
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: detalhe.id,
+      clienteId: detalhe.clienteId,
+      acao: estado,
+      ator: `equipe:${equipe.userId}`,
+    });
     return c.json({ ok: true });
   });
 
@@ -458,6 +537,20 @@ function serializarLinha(linha: LinhaDaAgenda) {
       duracaoMinutos: item.duracaoMinutos,
     })),
   };
+}
+
+function consentiu(corpo: unknown) {
+  return Boolean(corpo && typeof corpo === "object" && (corpo as { consentimento?: unknown }).consentimento === true);
+}
+
+function pedidoDeFicha(corpo: unknown) {
+  const telefone = telefoneDoCorpo(corpo);
+  if (!corpo || typeof corpo !== "object" || !telefone) return null;
+  const email = (corpo as { email?: unknown }).email;
+  if (typeof email !== "string") return null;
+  const normalizado = normalizarEmail(email);
+  if (!normalizado) return null;
+  return { telefone, email: normalizado };
 }
 
 function telefoneDoCorpo(corpo: unknown) {

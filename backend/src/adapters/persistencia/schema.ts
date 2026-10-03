@@ -93,6 +93,7 @@ export const agendamentos = pgTable(
     estado: text("estado").notNull(),
     presencaAvisadaEm: timestamp("presenca_avisada_em", { withTimezone: true }),
     origem: text("origem").notNull(),
+    consentimentoEm: timestamp("consentimento_em", { withTimezone: true }),
     criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
   },
   (tabela) => [
@@ -128,6 +129,15 @@ export const mensagens = pgTable(
     ),
   ],
 );
+
+export const auditoria = pgTable("auditoria", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agendamentoId: uuid("agendamento_id").references(() => agendamentos.id),
+  clienteId: uuid("cliente_id").references(() => clientes.id),
+  acao: text("acao").notNull(),
+  ator: text("ator").notNull(),
+  em: timestamp("em", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const itensAgendamento = pgTable("itens_agendamento", {
   id: uuid("id").primaryKey().defaultRandom(),
