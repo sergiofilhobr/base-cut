@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { CATALOGO_INICIAL, EXPEDIENTE_INICIAL } from "../../application/catalogo-inicial.ts";
 import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alterar-agendamento.ts";
+import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
@@ -10,6 +11,7 @@ import { verificarSaude } from "../../application/verificar-saude.ts";
 import { normalizarEmail, normalizarTelefone } from "../../domain/cliente/identidade.ts";
 import { podeCancelarPeloCliente } from "../../domain/agenda/regras.ts";
 import type { Autenticacao } from "../../ports/autenticacao.ts";
+import type { Mensageiro, RepositorioMensagens } from "../../ports/mensagens.ts";
 import type { AgendamentoDetalhe, Bloqueio, LinhaDaAgenda, RepositorioAgenda } from "../../ports/agenda.ts";
 import type { Banco } from "../../ports/banco.ts";
 import type { Relogio } from "../../ports/relogio.ts";
@@ -22,6 +24,10 @@ export function criarAplicacao(deps: {
   relogio: Relogio;
   agenda: RepositorioAgenda;
   autenticacao: Autenticacao;
+  mensagens: RepositorioMensagens;
+  mensageiro: Mensageiro;
+  telefoneDoBruno: string | undefined;
+  urlDoSite: string;
 }) {
   const app = new Hono();
 
@@ -101,6 +107,14 @@ export function criarAplicacao(deps: {
       const status = resultado.erro === "horario_indisponivel" || resultado.erro === "email_de_outra_ficha" ? 409 : 422;
       return c.json({ erro: resultado.erro }, status);
     }
+    await avisarMarcacao(deps.mensagens, deps.mensageiro, {
+      id: resultado.agendamento.id,
+      nome: pedido.nome,
+      telefone: pedido.telefone,
+      inicio: resultado.agendamento.inicio,
+      telefoneDoBruno: deps.telefoneDoBruno,
+      urlDoSite: deps.urlDoSite,
+    });
     return c.json(
       {
         id: resultado.agendamento.id,
@@ -222,6 +236,14 @@ export function criarAplicacao(deps: {
       const status = resultado.erro === "horario_indisponivel" ? 409 : 422;
       return c.json({ erro: resultado.erro }, status);
     }
+    await avisarMarcacao(deps.mensagens, deps.mensageiro, {
+      id: resultado.agendamento.id,
+      nome: pedido.nome,
+      telefone: pedido.telefone,
+      inicio: pedido.inicio,
+      telefoneDoBruno: deps.telefoneDoBruno,
+      urlDoSite: deps.urlDoSite,
+    });
     return c.json({ id: resultado.agendamento.id }, 201);
   });
 
