@@ -5,7 +5,10 @@ import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alt
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
+import { avaliacaoNova, caminhoDoGoogle } from "../../application/avaliar.ts";
 import { comprovante, fecharAtendimento } from "../../application/fechar-atendimento.ts";
+import { aplicarCupom, podeReceberCampanha, pontosDaVisita, proximaRecorrencia, relatorioCsv, resumirRelatorio } from "../../domain/relacao/regras.ts";
+import type { RepositorioRelacao } from "../persistencia/relacao-postgres.ts";
 import { cobrarSinal } from "../../application/cobrar-sinal.ts";
 import { importarBooksy } from "../../application/importar-booksy.ts";
 import { excluirFicha, exportarFicha } from "../../application/lgpd.ts";
@@ -38,6 +41,8 @@ export function criarAplicacao(deps: {
   urlDoSite: string;
   caixa: RepositorioCaixa;
   cobrancas: Cobrancas;
+  relacao: RepositorioRelacao;
+  urlGoogle: string;
 }) {
   const app = new Hono();
 
@@ -131,6 +136,9 @@ export function criarAplicacao(deps: {
       acao: "criacao",
       ator: `cliente:${pedido.telefone}`,
     });
+    if (corpo !== null && typeof corpo === "object" && (corpo as { marketing?: unknown }).marketing === true) {
+      await deps.relacao.definirOptIn(resultado.agendamento.clienteId, true);
+    }
     await avisarMarcacao(deps.mensagens, deps.mensageiro, {
       id: resultado.agendamento.id,
       nome: pedido.nome,
@@ -222,6 +230,21 @@ export function criarAplicacao(deps: {
     const resultado = await excluirFicha(deps.agenda, pedido);
     if (!resultado.ok) return c.json({ erro: resultado.erro }, 404);
     return c.json({ ok: true });
+  });
+
+  app.post("/api/privacidade/marketing", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const pedido = pedidoDeFicha(corpo);
+    if (!pedido || !corpo || typeof corpo !== "object" || typeof (corpo as { optIn?: unknown }).optIn !== "boolean") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const ficha = await exportarFicha(deps.agenda, pedido);
+    if (!ficha.ok) return c.json({ erro: ficha.erro }, 404);
+    const cliente = await deps.agenda.clientePorTelefone(pedido.telefone);
+    if (!cliente) return c.json({ erro: "nao_encontrado" }, 404);
+    const optIn = (corpo as { optIn: boolean }).optIn;
+    await deps.relacao.definirOptIn(cliente.id, optIn);
+    return c.json({ optIn, recebeCampanha: podeReceberCampanha(optIn) });
   });
 
   app.post("/api/whatsapp/entrada", async (c) => {
@@ -495,6 +518,147 @@ export function criarAplicacao(deps: {
       valorCentavos: dados.valorCentavos,
     });
     return c.json(plano, 201);
+  });
+
+  app.post("/api/espera", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.servicoIds !== "string" || typeof dados.desejadoEm !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const desejadoEm = new Date(dados.desejadoEm);
+    if (Number.isNaN(desejadoEm.getTime())) return c.json({ erro: "pedido_invalido" }, 400);
+    let clienteId = typeof dados.clienteId === "string" ? dados.clienteId : null;
+    if (!clienteId && typeof dados.telefone === "string") {
+      const telefone = normalizarTelefone(dados.telefone);
+      if (!telefone) return c.json({ erro: "pedido_invalido" }, 400);
+      const cliente = await deps.agenda.clientePorTelefone(telefone);
+      if (!cliente) return c.json({ erro: "ficha_inexistente" }, 422);
+      clienteId = cliente.id;
+    }
+    if (!clienteId) return c.json({ erro: "pedido_invalido" }, 400);
+    const espera = await deps.relacao.entrarEspera({ clienteId, servicoIds: dados.servicoIds, desejadoEm });
+    return c.json(espera, 201);
+  });
+
+  app.post("/api/painel/recorrencias", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.clienteId !== "string" || typeof dados.servicoIds !== "string") return c.json({ erro: "pedido_invalido" }, 400);
+    if (typeof dados.diaSemana !== "number" || typeof dados.hora !== "string") return c.json({ erro: "pedido_invalido" }, 400);
+    const recorrencia = await deps.relacao.criarRecorrencia({
+      clienteId: dados.clienteId,
+      servicoIds: dados.servicoIds,
+      diaSemana: dados.diaSemana,
+      hora: dados.hora,
+    });
+    const proxima = proximaRecorrencia(dados.diaSemana, dados.hora, deps.relogio.agora());
+    return c.json({ ...recorrencia, proxima: proxima?.toISOString() ?? null }, 201);
+  });
+
+  app.post("/api/avaliacoes", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.atendimentoId !== "string" || typeof dados.clienteId !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    if (typeof dados.nota !== "number" || typeof dados.texto !== "string") return c.json({ erro: "pedido_invalido" }, 400);
+    const nova = avaliacaoNova({ nota: dados.nota, texto: dados.texto });
+    if (!nova.ok) return c.json({ erro: nova.erro }, 422);
+    const gravada = await deps.relacao.criarAvaliacao({
+      atendimentoId: dados.atendimentoId,
+      clienteId: dados.clienteId,
+      nota: nova.avaliacao.nota,
+      texto: nova.avaliacao.texto,
+    });
+    if (typeof dados.totalCentavos === "number") {
+      await deps.relacao.somarPontos(dados.clienteId, pontosDaVisita(dados.totalCentavos));
+    }
+    return c.json({ ...gravada, publicada: false, google: caminhoDoGoogle(deps.urlGoogle) }, 201);
+  });
+
+  app.post("/api/painel/avaliacoes/:id/publicar", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    await deps.relacao.publicarAvaliacao(c.req.param("id"));
+    return c.json({ publicada: true });
+  });
+
+  app.post("/api/clientes/:id/marketing", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { optIn?: unknown }).optIn !== "boolean") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const optIn = (corpo as { optIn: boolean }).optIn;
+    await deps.relacao.definirOptIn(c.req.param("id"), optIn);
+    return c.json({ optIn, recebeCampanha: podeReceberCampanha(optIn) });
+  });
+
+  app.post("/api/painel/campanhas", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.nome !== "string" || typeof dados.texto !== "string") return c.json({ erro: "pedido_invalido" }, 400);
+    const campanha = await deps.relacao.criarCampanha({ nome: dados.nome, texto: dados.texto });
+    const audiencia = await deps.relacao.audiencia();
+    return c.json({ ...campanha, destinatarios: audiencia.length }, 201);
+  });
+
+  app.post("/api/painel/cupons", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.codigo !== "string" || typeof dados.descontoCentavos !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const cupom = await deps.relacao.criarCupom({ codigo: dados.codigo, descontoCentavos: dados.descontoCentavos });
+    return c.json(cupom, 201);
+  });
+
+  app.post("/api/cupons/aplicar", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.codigo !== "string" || typeof dados.totalCentavos !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const cupom = await deps.relacao.cupom(dados.codigo);
+    if (!cupom) return c.json({ erro: "cupom_invalido" }, 422);
+    const aplicado = aplicarCupom(dados.totalCentavos, cupom.descontoCentavos);
+    if (!aplicado.ok) return c.json({ erro: aplicado.erro }, 422);
+    return c.json({ totalCentavos: aplicado.total });
+  });
+
+  app.post("/api/painel/horarios-desconto", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.diaSemana !== "number" || typeof dados.inicio !== "string" || typeof dados.fim !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    if (typeof dados.descontoCentavos !== "number") return c.json({ erro: "pedido_invalido" }, 400);
+    const horario = await deps.relacao.criarHorarioDesconto({
+      diaSemana: dados.diaSemana,
+      inicio: dados.inicio,
+      fim: dados.fim,
+      descontoCentavos: dados.descontoCentavos,
+    });
+    return c.json(horario, 201);
+  });
+
+  app.get("/api/painel/relatorio.csv", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const de = dataDe(c.req.query("de"));
+    const ate = dataDe(c.req.query("ate"));
+    if (!de || !ate) return c.json({ erro: "pedido_invalido" }, 400);
+    const csv = relatorioCsv(resumirRelatorio(await deps.relacao.linhasDoPeriodo(de, ate)));
+    return c.text(csv);
   });
 
   app.post("/api/painel/bloqueios", async (c) => {

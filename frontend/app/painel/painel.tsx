@@ -147,6 +147,7 @@ function Agenda() {
       <Encaixe servicos={servicos} token={getToken} aoMudar={carregar} />
       <BloqueioForm token={getToken} aoMudar={carregar} />
       <Expediente token={getToken} />
+      <Relacao token={getToken} />
       <CorteBooksy token={getToken} />
     </div>
   )
@@ -385,6 +386,70 @@ function intervalo(dia: string, modo: 'dia' | 'semana') {
   const segunda = somarDias(dia, 1 - iso)
   const de = new Date(`${segunda}T00:00:00-03:00`)
   return { de: de.toISOString(), ate: new Date(de.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+}
+
+function Relacao({ token }: { token: () => Promise<string | null> }) {
+  const [de, setDe] = useState(diaCivil())
+  const [ate, setAte] = useState(somarDias(diaCivil(), 7))
+  const [codigo, setCodigo] = useState('')
+  const [desconto, setDesconto] = useState('1000')
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  return (
+    <div className="mt-10 flex flex-col gap-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Relação</p>
+      <div className="flex gap-2">
+        <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="border-b border-ink bg-transparent py-2 text-ink" />
+        <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="border-b border-ink bg-transparent py-2 text-ink" />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await token()
+          if (!autorizacao) return
+          const inicio = new Date(`${de}T00:00:00-03:00`).toISOString()
+          const fim = new Date(`${ate}T00:00:00-03:00`).toISOString()
+          const resposta = await fetch(
+            `/api/painel/relatorio.csv?de=${encodeURIComponent(inicio)}&ate=${encodeURIComponent(fim)}`,
+            { headers: { authorization: `Bearer ${autorizacao}` } },
+          )
+          if (!resposta.ok) {
+            setAviso('O relatório não saiu.')
+            return
+          }
+          const blob = await resposta.blob()
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = 'relatorio.csv'
+          link.click()
+          URL.revokeObjectURL(url)
+        }}
+      >
+        Baixar CSV
+      </Button>
+      <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Cupom" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <input value={desconto} onChange={(e) => setDesconto(e.target.value)} inputMode="numeric" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await token()
+          if (!autorizacao || !codigo.trim()) return
+          const resposta = await fetch('/api/painel/cupons', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+            body: JSON.stringify({ codigo: codigo.trim(), descontoCentavos: Number(desconto) }),
+          })
+          setAviso(resposta.ok ? 'Cupom gravado.' : 'O cupom não entrou.')
+        }}
+      >
+        Criar cupom
+      </Button>
+      {aviso && <p className="text-sm text-muted">{aviso}</p>}
+    </div>
+  )
 }
 
 function CorteBooksy({ token }: { token: () => Promise<string | null> }) {

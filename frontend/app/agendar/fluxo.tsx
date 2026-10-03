@@ -43,6 +43,8 @@ export function FluxoAgendar() {
   const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
   const [consentimento, setConsentimento] = useState(false)
+  const [marketing, setMarketing] = useState(false)
+  const [naEspera, setNaEspera] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [confirmado, setConfirmado] = useState<Confirmado | null>(null)
@@ -150,12 +152,16 @@ export function FluxoAgendar() {
           email,
           barbeiroId: barbeiroId ?? undefined,
           consentimento,
+          marketing,
         }),
       })
       const dados = (await resposta.json()) as { erro?: string; id?: string; inicio?: string; fim?: string }
       if (!resposta.ok || !dados.id || !dados.inicio || !dados.fim) {
         setErro(ERROS[dados.erro ?? ''] ?? 'Não foi possível gravar. Tente de novo.')
-        if (dados.erro === 'horario_indisponivel') setEtapa('horario')
+        if (dados.erro === 'horario_indisponivel') {
+          setEtapa('horario')
+          setNaEspera(false)
+        }
         return
       }
       setConfirmado({ id: dados.id, inicio: dados.inicio, fim: dados.fim })
@@ -279,6 +285,37 @@ export function FluxoAgendar() {
               ))}
             </ul>
           )}
+          {erro === ERROS.horario_indisponivel && inicio && (
+            <button
+              type="button"
+              className="mt-4 text-sm text-ink underline"
+              onClick={() => {
+                void fetch('/api/espera', {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body: JSON.stringify({
+                    telefone,
+                    servicoIds: escolhidos.join(','),
+                    desejadoEm: inicio,
+                  }),
+                }).then(async (resposta) => {
+                  if (resposta.status === 422) {
+                    setErro('A lista de espera pede uma ficha. Marque um horário antes.')
+                    return
+                  }
+                  if (!resposta.ok) {
+                    setErro('Não entrou na lista. Tente de novo.')
+                    return
+                  }
+                  setNaEspera(true)
+                  setErro(null)
+                })
+              }}
+            >
+              Entrar na lista de espera
+            </button>
+          )}
+          {naEspera && <p className="mt-3 text-sm text-ink">Você está na lista. A casa chama quando abrir.</p>}
           <Botao onClick={() => inicio && setEtapa('dados')} disabled={!inicio}>
             Seguir
           </Botao>
@@ -316,6 +353,15 @@ export function FluxoAgendar() {
               className="mt-1"
             />
             Concordo em guardar nome, telefone e e-mail para marcar e lembrar este horário.
+          </label>
+          <label className="flex items-start gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={marketing}
+              onChange={(evento) => setMarketing(evento.target.checked)}
+              className="mt-1"
+            />
+            Quero receber campanha e oferta. Posso sair quando quiser.
           </label>
           {erro && <p className="text-sm text-ink">{erro}</p>}
           <Botao
