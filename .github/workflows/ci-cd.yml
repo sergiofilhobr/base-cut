@@ -131,3 +131,31 @@ jobs:
             host=${host%%/*}
             vercel alias set "$host" base-cut-navy.vercel.app --token="$VERCEL_TOKEN" --cwd "$root" --yes
           fi
+
+  api-deploy:
+    name: Deploy da API
+    needs: [api]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publicar o processo na Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FLY_API_TOKEN}" ]; then
+            echo "Deploy da API adiado: falta FLY_API_TOKEN."
+            echo "main publica em basecut-api, com Neon Launch."
+            echo "develop publica em basecut-api-staging, com Neon Free e sem dados de produção."
+            echo "A Vercel não sobe a imagem Docker. O Compose continua só no local."
+            exit 0
+          fi
+          curl -L https://fly.io/install.sh | sh
+          export PATH="$HOME/.fly/bin:$PATH"
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            flyctl deploy --remote-only --config fly.toml --app basecut-api
+          else
+            flyctl deploy --remote-only --config fly.staging.toml --app basecut-api-staging
+          fi
