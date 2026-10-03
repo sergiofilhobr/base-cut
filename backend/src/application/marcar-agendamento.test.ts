@@ -84,6 +84,26 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
     },
     async cancelarAgendamento() {},
     async reagendarAgendamento() {},
+    async listarAgenda() {
+      return [];
+    },
+    async agendamentosCriadosDesde() {
+      return [];
+    },
+    async definirEstado() {},
+    async substituirItens() {},
+    async gravarBloqueio() {
+      return {
+        id: "b",
+        inicio: new Date(),
+        fim: new Date(),
+        motivo: "pausa" as const,
+      };
+    },
+    async listarBloqueios() {
+      return [];
+    },
+    async removerBloqueio() {},
   };
 }
 

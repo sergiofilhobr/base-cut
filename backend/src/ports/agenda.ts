@@ -21,7 +21,7 @@ export type Barbeiro = { id: string; nome: string };
 
 export type NovoAgendamento = {
   barbeiroId: string;
-  cliente: { id: string } | { nome: string; telefone: string; email: string };
+  cliente: { id: string } | { nome: string; telefone: string; email: string | null };
   inicio: Date;
   fim: Date;
   origem: "site" | "equipe";
@@ -60,6 +60,15 @@ export type AgendamentoDetalhe = {
   itens: ItemAgendamento[];
 };
 
+export type LinhaDaAgenda = AgendamentoDetalhe & { nome: string; criadoEm: Date };
+
+export type Bloqueio = {
+  id: string;
+  inicio: Date;
+  fim: Date;
+  motivo: "pausa" | "folga" | "ferias" | "trava";
+};
+
 export interface RepositorioAgenda {
   barbeiroAtivo(): Promise<Barbeiro | null>;
   barbeiroPorId(id: string): Promise<Barbeiro | null>;
@@ -89,6 +98,21 @@ export interface RepositorioAgenda {
     faixas: Array<{ diaSemana: number; inicio: string; fim: string }>,
   ): Promise<void>;
   gravarAgendamento(dados: NovoAgendamento): Promise<AgendamentoGravado>;
+  listarAgenda(barbeiroId: string, de: Date, ate: Date): Promise<LinhaDaAgenda[]>;
+  agendamentosCriadosDesde(barbeiroId: string, desde: Date): Promise<LinhaDaAgenda[]>;
+  definirEstado(
+    id: string,
+    estado: "concluido" | "falta" | "cancelado_pela_casa",
+  ): Promise<void>;
+  substituirItens(id: string, itens: ItemAgendamento[], fim: Date): Promise<void>;
+  gravarBloqueio(dados: {
+    barbeiroId: string;
+    inicio: Date;
+    fim: Date;
+    motivo: Bloqueio["motivo"];
+  }): Promise<Bloqueio>;
+  listarBloqueios(barbeiroId: string, de: Date, ate: Date): Promise<Bloqueio[]>;
+  removerBloqueio(id: string): Promise<void>;
   semearSeVazio(dados: {
     barbeiro: string;
     servicos: Array<{ nome: string; duracaoMinutos: number; precoCentavos: number }>;

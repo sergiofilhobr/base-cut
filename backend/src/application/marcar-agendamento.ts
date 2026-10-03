@@ -18,7 +18,7 @@ export type PedidoDeAgendamento = {
   inicio: Date;
   nome: string;
   telefone: string;
-  email: string;
+  email: string | null;
   origem: "site" | "equipe";
   barbeiroId?: string;
 };
@@ -50,10 +50,10 @@ export async function marcarAgendamento(
     agenda.ocupados(barbeiro.id, janela.inicio, janela.fim),
     agenda.indisponibilidades(barbeiro.id, janela.inicio, janela.fim),
     agenda.clientePorTelefone(pedido.telefone),
-    agenda.clientePorEmail(pedido.email),
+    pedido.email ? agenda.clientePorEmail(pedido.email) : Promise.resolve(null),
   ]);
 
-  if (porEmail && porEmail.id !== porTelefone?.id) {
+  if (pedido.email && porEmail && porEmail.id !== porTelefone?.id) {
     return { ok: false, erro: "email_de_outra_ficha" };
   }
 
