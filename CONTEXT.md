@@ -22,6 +22,22 @@ _Avoid_: pacote, assinatura, mensalidade
 Quem opera o painel da Base Cut. O cliente não faz parte da equipe. O Bruno é equipe e barbeiro ao mesmo tempo.
 _Avoid_: membro, staff, organização
 
+**Ficha**:
+O registro permanente de um cliente na casa: nome, telefone, e-mail e o histórico. Nasce na primeira marcação ou no cadastro.
+_Avoid_: conta, perfil, cadastro (o ato)
+
+**Cadastro**:
+O ato de o cliente criar a própria ficha pelo app: entra no Clerk e informa nome, telefone e consentimento.
+_Avoid_: sign-up, registro
+
+**Painel**:
+A parte do app que só a equipe vê: Hoje, Agenda, Expediente e Casa. O cliente vê a própria agenda, não o painel.
+_Avoid_: dashboard, admin
+
+**App**:
+Tudo o que mora em `/app` e pede sessão: o painel da equipe e a agenda do cliente, sob o mesmo header.
+_Avoid_: área logada, portal
+
 ### Agenda
 
 **Serviço**:

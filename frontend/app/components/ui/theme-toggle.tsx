@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { Sun, Moon } from 'lucide-react'
 
 /**
@@ -17,9 +17,12 @@ import { Sun, Moon } from 'lucide-react'
  */
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
+  /* Só no cliente o tema resolvido existe; no servidor renderiza a caixa vazia. */
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
 
   if (!mounted) {
     /* Mesma caixa do switch — nada de layout shift na hidratação. */

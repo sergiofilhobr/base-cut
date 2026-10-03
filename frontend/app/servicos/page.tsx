@@ -5,7 +5,7 @@ import { PriceTable } from '@/app/components/sections/price-table'
 export const metadata: Metadata = {
   title: 'Serviços e Preços — Base Cut Barbearia',
   description:
-    'Corte, barba, sobrancelha, hidratação e acabamentos. Confira a tabela de preços e agende pelo Booksy.',
+    'Corte, barba, sobrancelha, hidratação e acabamentos. Confira a tabela de preços e marque pelo site.',
 }
 
 export default function ServicosPage() {

@@ -6,6 +6,7 @@ export type RepositorioRelacao = {
   criarAvaliacao(dados: { atendimentoId: string; clienteId: string; nota: number; texto: string }): Promise<{ id: string }>;
   publicarAvaliacao(id: string): Promise<void>;
   definirOptIn(clienteId: string, optIn: boolean): Promise<void>;
+  optIn(clienteId: string): Promise<boolean>;
   somarPontos(clienteId: string, pontos: number): Promise<void>;
   criarCupom(dados: { codigo: string; descontoCentavos: number }): Promise<{ id: string }>;
   cupom(codigo: string): Promise<{ descontoCentavos: number } | null>;
@@ -46,6 +47,12 @@ export function criarRepositorioRelacao(sql: Sql): RepositorioRelacao {
     },
     async definirOptIn(clienteId, optIn) {
       await sql`update clientes set marketing_opt_in = ${optIn} where id = ${clienteId}`;
+    },
+    async optIn(clienteId) {
+      const [linha] = await sql<{ marketing_opt_in: boolean }[]>`
+        select marketing_opt_in from clientes where id = ${clienteId}
+      `;
+      return linha?.marketing_opt_in ?? false;
     },
     async somarPontos(clienteId, pontos) {
       await sql`update clientes set pontos = pontos + ${pontos} where id = ${clienteId}`;

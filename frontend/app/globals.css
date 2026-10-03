@@ -3,6 +3,12 @@
 
 @import "tailwindcss";
 
+/* ── daisyUI 5, sem os temas de fábrica: as variáveis de tema vêm dos
+   tokens do design.md, logo abaixo, nos dois modos. ── */
+@plugin "daisyui" {
+  themes: false;
+}
+
 /* ── Tailwind v4: teach the dark: prefix to use the .dark class ── */
 @variant dark (&:where(.dark, .dark *));
 
@@ -22,6 +28,48 @@
   --ink: #1a1917; /* quase-preto quente */
   --muted: #5f5d58; /* apoio — 5.1:1 sobre o papel */
   --rule: #d8d3c6; /* fio de régua e bordas */
+}
+
+/* ── Tema do daisyUI = os cinco tokens, sem acento cromático (design.md).
+   Os papéis semânticos (info, success, warning, error) também são tinta:
+   ênfase se carrega com peso, caixa ou cinza, nunca com cor. Raio zero,
+   sem profundidade, sem ruído. `--size-field` em 0.275rem dá 44px de
+   altura a botão e campo — o piso de alvo de toque. ── */
+:root,
+.dark {
+  color-scheme: light;
+  --color-base-100: var(--paper);
+  --color-base-200: var(--surface);
+  --color-base-300: var(--rule);
+  --color-base-content: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-content: var(--paper);
+  --color-secondary: var(--muted);
+  --color-secondary-content: var(--paper);
+  --color-accent: var(--ink);
+  --color-accent-content: var(--paper);
+  --color-neutral: var(--ink);
+  --color-neutral-content: var(--paper);
+  --color-info: var(--ink);
+  --color-info-content: var(--paper);
+  --color-success: var(--ink);
+  --color-success-content: var(--paper);
+  --color-warning: var(--ink);
+  --color-warning-content: var(--paper);
+  --color-error: var(--ink);
+  --color-error-content: var(--paper);
+  --radius-selector: 0;
+  --radius-field: 0;
+  --radius-box: 0;
+  --size-selector: 0.25rem;
+  --size-field: 0.275rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 /* Barber pole — material físico: usa os mesmos neutros quentes,

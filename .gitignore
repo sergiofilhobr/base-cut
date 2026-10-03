@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# issues e specs locais (docs/agents/issue-tracker.md)
+.scratch/

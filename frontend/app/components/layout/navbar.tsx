@@ -112,6 +112,20 @@ export function Navbar() {
 
         <div className="flex items-center gap-4">
           <ThemeToggle />
+          <Link
+            href="/app"
+            className="
+              hidden sm:inline-block
+              font-mono text-[11px] uppercase tracking-[0.2em] whitespace-nowrap
+              text-muted border-b border-transparent pb-0.5
+              hover:text-ink
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+              focus-visible:outline-ink
+              transition-colors duration-200
+            "
+          >
+            Conta
+          </Link>
           <LinkAgendar
             id="navbar-cta"
             className="

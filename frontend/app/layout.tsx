@@ -31,7 +31,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Base Cut Barbearia – Itajaí',
   description:
-    'Barbearia de alto padrão em Itajaí. Corte, barba e acabamentos com precisão e experiência completa. Agende pelo Booksy.',
+    'Barbearia de alto padrão em Itajaí. Corte, barba e acabamentos com precisão e experiência completa. Agende pelo site.',
   keywords: ['barbearia', 'itajaí', 'corte', 'barba', 'base cut'],
   authors: [{ name: 'Oxímoro Tech', url: 'https://oximorotech.com.br' }],
   creator: 'Oxímoro Tech',
@@ -58,6 +58,7 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       className={`${inter.variable} ${archivo.variable} ${jetbrainsMono.variable}`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="bg-paper text-ink antialiased transition-colors duration-300 min-h-dvh flex flex-col">

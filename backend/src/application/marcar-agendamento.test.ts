@@ -113,11 +113,15 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
       return [];
     },
     async anonimizarCliente() {},
+    async historicoDoCliente() {
+      return [];
+    },
+    async atualizarCliente() {},
     async agendamentosDoCliente() {
       return [];
     },
     async lerConfiguracao() {
-      return "booksy";
+      return null;
     },
     async gravarConfiguracao() {},
     async criarCliente(dados) {

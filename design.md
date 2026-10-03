@@ -15,6 +15,9 @@ de SaaS, atmospheric ou playful no brief.
 - **Content pages:** Catalogue — `/servicos`, `/contato`, `/galeria`. Varia: densidade da lista.
 - **Statement pages:** Manifesto — `/sobre`.
 - **Index pages:** Index-First — `/links`. A página **é** a lista.
+- **App pages:** Workbench — `/app/*`, o painel da casa e a conta do cliente.
+  Título pequeno e funcional, régua de dados em mono, listas densas separadas
+  por fio de 1px, formulários com rótulo acima. Varia: a densidade por papel.
 - **Variante declarada:** `/run-club` usa um deck de capítulos em carrossel,
   herdado do material impresso do Base Run. É a única página que foge das
   famílias acima, e foge de propósito: a DNA veio do deck da marca.
@@ -43,6 +46,21 @@ Três emendas ao sistema, declaradas aqui porque valem **só** nessa rota:
 
 Rótulos de grupo ("Redes", "No site") vivem empilhados **acima** da lista, nunca
 ao lado — é a lei da coluna única.
+
+### `/app` — chrome próprio, por papel
+
+Sob `/app` o `SiteChrome` desliga nav e footer do site. O header é o mesmo
+N7 (slab, fio de 2px, mono tracked), mas carrega as **seções do app** de quem
+entrou: a equipe vê Hoje · Agenda · Expediente · Casa; o cliente vê
+Horários · Marcar · Ficha. Tema, nome de quem entrou e Sair ficam à direita.
+Abaixo de `sm` as seções viram um painel de disclosure sob a barra.
+**O barber pole não entra no app**: ele é marca do site; depois do login o
+header carrega só o wordmark e as seções.
+
+Os componentes do app são o daisyUI (ADR 0011) vestido com os tokens daqui:
+raio zero, sem sombra, todas as cores semânticas na tinta. `btn`, `input`,
+`select`, `checkbox`, `badge`, `stats`, `collapse` e `alert` são os únicos em
+uso; o que trouxer forma própria é sobrescrito na classe.
 
 ## Theme
 
@@ -130,9 +148,9 @@ vertical varia de propósito entre as famílias (ver *Per-page allowances*).
 - O par Archivo + Inter + JetBrains Mono.
 - A voz de CTA (retângulo sólido, mono caixa alta).
 - Nav N7 e footer Ft4 — exceto em `/links`, que declara chrome próprio.
-- O barber pole: grande no canto do main **só na home**; nas demais rotas,
-  versão mini no header ao lado do wordmark (visível a partir de `lg`) —
-  exceto em `/links`, que não tem header (ver a seção da rota).
+- O barber pole: grande no canto do main **só na home**; nas demais rotas do
+  site, versão mini no header ao lado do wordmark (visível a partir de `lg`) —
+  exceto em `/links`, que não tem header, e em `/app`, que não o carrega.
 - Altura mínima de viewport: o `main` sempre preenche o espaço entre nav e footer.
 
 ## What pages MAY differ on

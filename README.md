@@ -12,7 +12,35 @@ npm run dev:frontend
 
 A API responde em `http://localhost:4000/api/health`. O site continua em `http://localhost:3000`. O Postgres do projeto escuta na porta 5434, para não disputar um Postgres que já esteja na máquina.
 
-Site institucional da **Base Cut Barbearia**, em Itajaí/SC. Next.js 16, React 19 e Tailwind CSS v4. O agendamento público ainda aponta para o [Booksy](https://booksy.com), até o corte.
+## Entrada, cadastro e painel (`/app`)
+
+Quem entra em `/app` é identificado por `GET /api/eu`: equipe (member da organization no Clerk) vê o painel — Hoje, Agenda, Expediente, Casa; cliente vê a própria agenda — Horários, Marcar, Ficha. Cliente sem ficha completa o cadastro na primeira entrada.
+
+### Com o Clerk (instância de desenvolvimento)
+
+1. No [dashboard do Clerk](https://dashboard.clerk.com), crie a aplicação (ou use a existente) e fique na instância **Development**.
+2. Em *User & authentication*, deixe **Email address** obrigatório com **Email verification code**. Telefone e nome não precisam estar no Clerk: a ficha guarda.
+3. Em *Organizations*, ative organizations e crie a **Base Cut**. Copie o `org_...` para `CLERK_ORG_ID`.
+4. Em *Organizations → Roles*, além de `org:admin`, crie `org:barbeiro` e `org:recepcao`. Convide o Bruno como `org:admin`.
+5. Em *API keys*, copie a **Publishable key** (`pk_test_...`) para `frontend/.env.local` e a **Secret key** (`sk_test_...`) para `backend/.env`:
+
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+API_URL=http://localhost:4000
+
+# backend/.env
+CLERK_SECRET_KEY=sk_test_...
+CLERK_ORG_ID=org_...
+```
+
+Com a chave presente, o modo local abaixo desliga sozinho. O cliente não é member da organization: ele só autentica (ADR 0007).
+
+### Sem o Clerk (modo local)
+
+Para desenvolver sem chave, `AUTH_LOCAL=1` no `backend/.env` e `NEXT_PUBLIC_AUTH_LOCAL=1` no `frontend/.env.local`. A tela de entrada vira um seletor de papel (equipe admin, barbeiro, recepção, ou cliente por e-mail) e o token é o papel. Nunca liga em produção nem com `CLERK_SECRET_KEY` presente.
+
+Site e app da **Base Cut Barbearia**, em Itajaí/SC. Next.js 16, React 19, Tailwind CSS v4 e daisyUI. A marcação é pelo próprio site (`/agendar`); o painel da casa e a agenda do cliente moram em `/app`.
 
 ---
 
@@ -35,7 +63,7 @@ frontend/
 │   │   │   ├── navbar.tsx          # Navegação entre rotas + troca de tema
 │   │   │   └── footer.tsx          # Rodapé com contato e redes
 │   │   ├── sections/
-│   │   │   ├── hero.tsx            # Chamada principal com CTA (Booksy)
+│   │   │   ├── hero.tsx            # Chamada principal com CTA (/agendar)
 │   │   │   ├── services.tsx        # Serviços oferecidos
 │   │   │   ├── run-club.tsx        # Base Run — deck de 5 capítulos em carrossel
 │   │   │   ├── gallery.tsx         # Galeria — slots de foto por capítulo
@@ -197,7 +225,9 @@ npm run dev -- -p 3001
 
 | Rota | Página | Conteúdo |
 |---|---|---|
-| `/` | `app/page.tsx` | Hero com CTA de agendamento (Booksy) |
+| `/` | `app/page.tsx` | Hero com CTA de agendamento (`/agendar`) |
+| `/agendar` | `app/agendar/page.tsx` | Marcação pública: serviço, horário, dados |
+| `/app` | `app/app/` | Entrada, cadastro, painel da equipe e agenda do cliente |
 | `/servicos` | `app/servicos/page.tsx` | Serviços + tabela de preços (`lib/services.json`) |
 | `/run-club` | `app/run-club/page.tsx` | Base Run — 5 capítulos em carrossel |
 | `/galeria` | `app/galeria/page.tsx` | O Barbeiro, Ambiente, Atendimentos, Run — slots de foto |
@@ -254,5 +284,5 @@ npm run start
 ## 📍 Base Cut Barbearia
 
 **Localização:** Itajaí, SC — Brasil  
-**Agendamentos:** [Booksy](https://booksy.com)  
+**Agendamentos:** pelo site, em `/agendar`  
 **Base Run Club:** Comunidade de corrida — entre em contato via WhatsApp

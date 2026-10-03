@@ -11,6 +11,10 @@ function agendaCom(inicial: Cliente) {
     async clientePorTelefone(telefone: string) {
       return ficha.telefone === telefone ? ficha : null;
     },
+    async historicoDoCliente() {
+      return [];
+    },
+    async atualizarCliente() {},
     async agendamentosDoCliente() {
       return [
         {

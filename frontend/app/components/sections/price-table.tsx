@@ -18,7 +18,7 @@ type Linha = { nome: string; preco: string; duracao: string }
  *
  * Vive na coluna direita de /servicos, ao lado do índice de serviços.
  * Lê a API. Se ela estiver fora, a tabela estática segura a página.
- * O CTA continua no Booksy até o corte do link público.
+ * O CTA leva à marcação do site.
  */
 export async function PriceTable() {
   const linhas = await linhasDePreco()
