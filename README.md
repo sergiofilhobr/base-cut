@@ -1,13 +1,27 @@
-# Base Cut Barbearia — Landing Page
+# Base Cut Barbearia
 
-Site institucional da **Base Cut Barbearia**, localizada em Itajaí/SC. Desenvolvido com Next.js 16, React 19 e Tailwind CSS v4, com foco em performance, design premium e experiência de agendamento via [Booksy](https://booksy.com).
+O site fica em `frontend/` (Next.js 16). A agenda fica em `backend/` (API com Postgres). No local, o banco sobe com Docker.
+
+```bash
+docker compose up -d postgres
+cp backend/.env.example backend/.env
+npm --prefix backend install
+npm run dev:backend
+npm run dev:frontend
+```
+
+A API responde em `http://localhost:4000/api/health`. O site continua em `http://localhost:3000`. O Postgres do projeto escuta na porta 5434, para não disputar um Postgres que já esteja na máquina.
+
+Site institucional da **Base Cut Barbearia**, em Itajaí/SC. Next.js 16, React 19 e Tailwind CSS v4. O agendamento público ainda aponta para o [Booksy](https://booksy.com), até o corte.
 
 ---
 
 ## 🗂 Estrutura do Projeto
 
+Os caminhos abaixo são relativos a `frontend/`.
+
 ```
-base-cut/
+frontend/
 ├── app/
 │   ├── page.tsx                    # Rota /        — Hero
 │   ├── servicos/page.tsx           # Rota /servicos — serviços + tabela de preços
