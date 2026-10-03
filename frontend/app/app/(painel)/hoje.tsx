@@ -2,14 +2,17 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { diaCivil, formatarDiaLongo, formatarHorario, intervaloDoDia } from '@/app/lib/agenda'
+import { diaCivil, formatarDiaLongo, formatarHorario, formatarPreco, intervaloDoDia } from '@/app/lib/agenda'
 import { useApi } from '../sessao'
 import { classesDoBotao } from '../ui/button'
 import { Falha } from '../ui/campo'
-import { Carregando, Pagina, Regua, Secao, Vazio } from '../ui/secao'
+import { EsqueletoLista, Pagina, Regua, Secao, Vazio } from '../ui/secao'
 import { LinhaAgenda, type LinhaDaAgenda, type ServicoBasico } from './agenda/linha-agenda'
 
 type Bloqueio = { id: string; inicio: string; fim: string; motivo: string }
+type Caixa = { totalCentavos: number; meios: Array<{ meio: string; valorCentavos: number }> }
+
+const MEIO: Record<string, string> = { pix: 'Pix', cartao: 'Cartão', dinheiro: 'Dinheiro', vale: 'Vale' }
 
 /** Hoje — o dia da casa de relance, com as ações de fechar cada horário. */
 export function Hoje() {
@@ -17,13 +20,14 @@ export function Hoje() {
   const [linhas, setLinhas] = useState<LinhaDaAgenda[] | null>(null)
   const [bloqueios, setBloqueios] = useState<Bloqueio[]>([])
   const [servicos, setServicos] = useState<ServicoBasico[]>([])
+  const [caixa, setCaixa] = useState<Caixa | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [agora, setAgora] = useState(() => new Date().toISOString())
   const hoje = diaCivil()
 
   const carregar = useCallback(() => {
     const { de, ate } = intervaloDoDia(hoje)
-    return api
+    const agenda = api
       .chamar<{ agendamentos: LinhaDaAgenda[]; bloqueios: Bloqueio[] }>(
         `/api/painel/agenda?de=${encodeURIComponent(de)}&ate=${encodeURIComponent(ate)}`,
       )
@@ -38,6 +42,10 @@ export function Hoje() {
         setBloqueios(resposta.dados.bloqueios)
         setAgora(new Date().toISOString())
       })
+    const dinheiro = api
+      .chamar<Caixa>(`/api/painel/caixa?de=${encodeURIComponent(de)}&ate=${encodeURIComponent(ate)}`)
+      .then((resposta) => setCaixa(resposta.dados ?? { totalCentavos: 0, meios: [] }))
+    return Promise.all([agenda, dinheiro]).then(() => undefined)
   }, [api, hoje])
 
   useEffect(() => {
@@ -75,28 +83,38 @@ export function Hoje() {
             valor: proximo ? `${formatarHorario(proximo.inicio)} · ${proximo.nome}` : '—',
           },
           { termo: 'Concluídos', valor: linhas === null ? '—' : String(concluidos) },
-          { termo: 'Pausas', valor: linhas === null ? '—' : String(bloqueios.length) },
+          { termo: 'Faturado', valor: caixa === null ? '—' : formatarPreco(caixa.totalCentavos) },
         ]}
       />
+      {caixa && caixa.meios.length > 0 && (
+        <Regua
+          itens={caixa.meios.map((meio) => ({
+            termo: MEIO[meio.meio] ?? meio.meio,
+            valor: formatarPreco(Number(meio.valorCentavos)),
+          }))}
+        />
+      )}
 
       <Secao titulo="Horários do dia" descricao="Concluir, registrar falta ou cancelar, direto na linha.">
         {erro && <Falha>{erro}</Falha>}
         {linhas === null ? (
-          <Carregando />
+          <EsqueletoLista />
         ) : linhas.length === 0 ? (
           <Vazio>Nenhum horário marcado para hoje.</Vazio>
         ) : (
-          <ul>
+          <ul className="list">
             {linhas.map((linha) => (
               <LinhaAgenda key={linha.id} linha={linha} servicos={servicos} aoMudar={carregar} compacta />
             ))}
           </ul>
         )}
         {bloqueios.length > 0 && (
-          <ul className="mt-2">
+          <ul className="list mt-2">
             {bloqueios.map((bloqueio) => (
-              <li key={bloqueio.id} className="border-b border-rule py-3 text-sm text-muted">
-                {rotuloMotivo(bloqueio.motivo)} · {formatarHorario(bloqueio.inicio)}–{formatarHorario(bloqueio.fim)}
+              <li key={bloqueio.id} className="list-row text-sm text-muted">
+                <span className="list-col-grow">
+                  {rotuloMotivo(bloqueio.motivo)} · {formatarHorario(bloqueio.inicio)}–{formatarHorario(bloqueio.fim)}
+                </span>
               </li>
             ))}
           </ul>

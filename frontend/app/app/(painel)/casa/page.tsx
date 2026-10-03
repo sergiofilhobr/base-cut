@@ -5,8 +5,9 @@ import { diaCivil, reaisParaCentavos, somarDias } from '@/app/lib/agenda'
 import { useApi } from '../../sessao'
 import { Button } from '../../ui/button'
 import { Campo, Falha, Selecao } from '../../ui/campo'
-import { Pagina, Secao, Vazio } from '../../ui/secao'
+import { Pagina, Vazio } from '../../ui/secao'
 import { SoEquipe } from '../agenda/page'
+import { Avaliacoes, Bloco, Campanha, FichaDaCasa, Planos, Produtos } from './blocos'
 import { useEquipe } from '../eu'
 
 type Barbeiro = { id: string; nome: string }
@@ -48,7 +49,12 @@ export default function CasaPage() {
     >
       <Relatorio />
       <Cupom />
+      <Produtos />
+      <Planos />
       <Equipe barbeiros={barbeiros} admin={admin} aoMudar={recarregarBarbeiros} />
+      <FichaDaCasa />
+      <Avaliacoes />
+      <Campanha />
       <RunClub />
       <Galeria servicos={servicos} />
     </Pagina>
@@ -73,7 +79,7 @@ function Relatorio() {
   }
 
   return (
-    <Secao titulo="Relatório" descricao="Atendimentos, faturamento e repasse do período, em CSV.">
+    <Bloco titulo="Relatório" descricao="Atendimentos, faturamento e repasse do período, em CSV.">
       <div className="grid gap-5 sm:grid-cols-2 max-w-md">
         <Campo label="De" type="date" value={de} onChange={(e) => setDe(e.target.value)} />
         <Campo label="Até" type="date" value={ate} onChange={(e) => setAte(e.target.value)} />
@@ -89,7 +95,7 @@ function Relatorio() {
       <div className="mt-3">
         <Falha>{erro}</Falha>
       </div>
-    </Secao>
+    </Bloco>
   )
 }
 
@@ -124,7 +130,7 @@ function Cupom() {
   }
 
   return (
-    <Secao titulo="Cupom" descricao="Desconto fixo em reais, aplicado no fechamento.">
+    <Bloco titulo="Cupom" descricao="Desconto fixo em reais, aplicado no fechamento.">
       <form onSubmit={enviar} className="grid gap-5 sm:grid-cols-[1fr_8rem_auto] items-start max-w-xl" noValidate>
         <Campo label="Código" value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="BASE10" className="[&_input]:uppercase" />
         <Campo label="Desconto" inputMode="decimal" value={desconto} onChange={(e) => setDesconto(e.target.value)} />
@@ -138,7 +144,7 @@ function Cupom() {
           Último criado: {ultimo}
         </p>
       )}
-    </Secao>
+    </Bloco>
   )
 }
 
@@ -151,17 +157,26 @@ function Equipe({ barbeiros, admin, aoMudar }: { barbeiros: Barbeiro[]; admin: b
   const [ocupado, setOcupado] = useState<string | null>(null)
 
   return (
-    <Secao titulo="Equipe" descricao={admin ? 'Quem atende e qual percentual fica com cada um.' : 'Só o admin inclui barbeiro e grava comissão.'}>
+    <Bloco titulo="Equipe" descricao={admin ? 'Quem atende e qual percentual fica com cada um.' : 'Só o admin inclui barbeiro e grava comissão.'}>
       {barbeiros.length === 0 ? (
         <Vazio>Nenhum barbeiro ativo.</Vazio>
       ) : (
-        <ul>
-          {barbeiros.map((barbeiro) => (
-            <li key={barbeiro.id} className="border-b border-rule py-3 text-sm text-ink">
-              {barbeiro.nome}
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+              </tr>
+            </thead>
+            <tbody>
+              {barbeiros.map((barbeiro) => (
+                <tr key={barbeiro.id}>
+                  <td>{barbeiro.nome}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {admin && (
         <div className="mt-8 grid gap-10 md:grid-cols-2">
@@ -226,9 +241,12 @@ function Equipe({ barbeiros, admin, aoMudar }: { barbeiros: Barbeiro[]; admin: b
       <div className="mt-3">
         <Falha>{erro}</Falha>
       </div>
-    </Secao>
+    </Bloco>
   )
 }
+
+type Inscrito = { clienteId: string; nome: string; telefone: string; presente: boolean; runClub: boolean }
+type Evento = { id: string; nome: string; inicio: string; vagas: number }
 
 function RunClub() {
   const api = useApi()
@@ -238,9 +256,32 @@ function RunClub() {
   const [erro, setErro] = useState<string | null>(null)
   const [ultima, setUltima] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  const [eventos, setEventos] = useState<Evento[]>([])
+  const [eventoId, setEventoId] = useState('')
+  const [inscritos, setInscritos] = useState<Inscrito[]>([])
+  const [checkin, setCheckin] = useState<string | null>(null)
+
+  useEffect(() => {
+    void api.chamar<{ eventos: Evento[] }>('/api/run').then((resposta) => {
+      const lista = resposta.dados?.eventos ?? []
+      setEventos(lista)
+      setEventoId((atual) => atual || lista.at(-1)?.id || '')
+    })
+  }, [api, ultima])
+
+  useEffect(() => {
+    if (!eventoId) return
+    let vivo = true
+    void api.chamar<{ inscritos: Inscrito[] }>(`/api/painel/run/${eventoId}/inscritos`).then((resposta) => {
+      if (vivo) setInscritos(resposta.dados?.inscritos ?? [])
+    })
+    return () => {
+      vivo = false
+    }
+  }, [api, eventoId, checkin])
 
   return (
-    <Secao titulo="Run Club" descricao="Abre a próxima corrida; o cliente se inscreve pelo site.">
+    <Bloco titulo="Run Club" descricao="Abre a corrida, vê quem entrou e faz o check-in — a tag fica na ficha.">
       <form
         className="grid gap-5 sm:grid-cols-[1fr_1fr_6rem_auto] items-start max-w-2xl"
         noValidate
@@ -278,7 +319,77 @@ function RunClub() {
           Aberta: {ultima}
         </p>
       )}
-    </Secao>
+      {eventos.length > 0 && (
+        <div className="mt-8 flex flex-col gap-4">
+          <Selecao
+            label="Corrida"
+            value={eventoId}
+            onChange={(e) => {
+              setInscritos([])
+              setEventoId(e.target.value)
+            }}
+            className="max-w-md"
+          >
+            {eventos.map((evento) => (
+              <option key={evento.id} value={evento.id}>
+                {evento.nome}
+              </option>
+            ))}
+          </Selecao>
+          {inscritos.length === 0 ? (
+            <Vazio>Ninguém inscrito nessa corrida.</Vazio>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inscritos.map((pessoa) => (
+                    <tr key={pessoa.clienteId}>
+                      <td>
+                        {pessoa.nome}
+                        {pessoa.runClub || pessoa.presente ? <span className="text-muted"> · Run Club</span> : null}
+                      </td>
+                      <td className="font-mono text-xs">{pessoa.telefone}</td>
+                      <td>
+                        {pessoa.presente ? (
+                          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">Presente</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            ocupado={checkin === pessoa.clienteId}
+                            onClick={async () => {
+                              setCheckin(pessoa.clienteId)
+                              await api.chamar(`/api/painel/run/${eventoId}/checkin`, {
+                                metodo: 'POST',
+                                corpo: { clienteId: pessoa.clienteId },
+                              })
+                              setCheckin(null)
+                              const resposta = await api.chamar<{ inscritos: Inscrito[] }>(
+                                `/api/painel/run/${eventoId}/inscritos`,
+                              )
+                              setInscritos(resposta.dados?.inscritos ?? [])
+                            }}
+                          >
+                            Check-in
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </Bloco>
   )
 }
 
@@ -292,7 +403,7 @@ function Galeria({ servicos }: { servicos: Servico[] }) {
   const [ocupado, setOcupado] = useState(false)
 
   return (
-    <Secao titulo="Galeria" descricao="Publica uma foto já hospedada, com legenda e o serviço que mostra.">
+    <Bloco titulo="Galeria" descricao="Publica uma foto já hospedada, com legenda e o serviço que mostra.">
       <form
         className="grid gap-5 sm:grid-cols-2 max-w-2xl"
         noValidate
@@ -340,6 +451,6 @@ function Galeria({ servicos }: { servicos: Servico[] }) {
           Publicada: {ultima}
         </p>
       )}
-    </Secao>
+    </Bloco>
   )
 }

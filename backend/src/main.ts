@@ -32,6 +32,10 @@ const mensageiro = criarMensageiroZApi({
 });
 const urlDoSite = process.env.SITE_URL ?? "http://localhost:3000";
 
+if (process.env.NODE_ENV === "production" && process.env.AUTH_LOCAL === "1") {
+  throw new Error("AUTH_LOCAL não vale em produção.");
+}
+
 const autenticacaoLocal =
   process.env.AUTH_LOCAL === "1" && !process.env.CLERK_SECRET_KEY && process.env.NODE_ENV !== "production";
 if (autenticacaoLocal) {

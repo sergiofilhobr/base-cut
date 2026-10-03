@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { formatarPreco, reaisParaCentavos } from '@/app/lib/agenda'
 import { useApi } from '../../sessao'
 import { Button } from '../../ui/button'
-import { Caixa, Falha, Selecao } from '../../ui/campo'
-import { Carregando, Pagina, Secao } from '../../ui/secao'
+import { Campo, Falha, Selecao } from '../../ui/campo'
+import { EsqueletoLista, Pagina, Secao, Vazio } from '../../ui/secao'
 import { SoEquipe } from '../agenda/page'
 import { useEquipe } from '../eu'
 
@@ -114,45 +115,57 @@ export default function ExpedientePage() {
         descricao="Os horários livres do site nascem daqui. Fora dessas faixas ninguém marca."
       >
         {semana === null || semanaDe !== barbeiroId ? (
-          <Carregando />
+          <EsqueletoLista linhas={7} />
         ) : (
           <form onSubmit={salvar} noValidate>
-            <ul>
-              {semana.map((dia) => (
-                <li
-                  key={dia.diaSemana}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[10rem_minmax(0,1fr)] items-center gap-x-6 gap-y-3 border-b border-rule py-4"
-                >
-                  <Caixa
-                    label={<span className="text-base">{DIAS[dia.diaSemana - 1]}</span>}
-                    checked={dia.atende}
-                    onChange={(e) => mudar(dia.diaSemana, { atende: e.target.checked })}
-                  />
-                  <div className="flex items-center gap-3 col-span-2 sm:col-span-1">
-                    <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-                      das
-                      <input
-                        type="time"
-                        value={dia.inicio}
-                        disabled={!dia.atende}
-                        onChange={(e) => mudar(dia.diaSemana, { inicio: e.target.value })}
-                        className="input w-28 px-2 font-sans text-base tracking-normal"
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-                      às
-                      <input
-                        type="time"
-                        value={dia.fim}
-                        disabled={!dia.atende}
-                        onChange={(e) => mudar(dia.diaSemana, { fim: e.target.value })}
-                        className="input w-28 px-2 font-sans text-base tracking-normal"
-                      />
-                    </label>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Dia</th>
+                    <th>Atende</th>
+                    <th>Das</th>
+                    <th>Às</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {semana.map((dia) => (
+                    <tr key={dia.diaSemana}>
+                      <td className="text-ink">{DIAS[dia.diaSemana - 1]}</td>
+                      <td>
+                        <input
+                          type="checkbox"
+                          className="toggle"
+                          aria-label={`${DIAS[dia.diaSemana - 1]} atende`}
+                          checked={dia.atende}
+                          onChange={(e) => mudar(dia.diaSemana, { atende: e.target.checked })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="time"
+                          value={dia.inicio}
+                          disabled={!dia.atende}
+                          aria-label={`${DIAS[dia.diaSemana - 1]} começa`}
+                          onChange={(e) => mudar(dia.diaSemana, { inicio: e.target.value })}
+                          className="input input-sm w-28"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="time"
+                          value={dia.fim}
+                          disabled={!dia.atende}
+                          aria-label={`${DIAS[dia.diaSemana - 1]} termina`}
+                          onChange={(e) => mudar(dia.diaSemana, { fim: e.target.value })}
+                          className="input input-sm w-28"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <Button type="submit" ocupado={ocupado}>
                 Salvar expediente
@@ -167,6 +180,99 @@ export default function ExpedientePage() {
           </form>
         )}
       </Secao>
+      <Descontos />
     </Pagina>
+  )
+}
+
+type FaixaDesconto = { id: string; diaSemana: number; inicio: string; fim: string; descontoCentavos: number }
+
+function Descontos() {
+  const api = useApi()
+  const [faixas, setFaixas] = useState<FaixaDesconto[]>([])
+  const [diaSemana, setDiaSemana] = useState('2')
+  const [inicio, setInicio] = useState('14:00')
+  const [fim, setFim] = useState('16:00')
+  const [desconto, setDesconto] = useState('15,00')
+  const [erro, setErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [versao, setVersao] = useState(0)
+
+  useEffect(() => {
+    void api.chamar<{ horarios: FaixaDesconto[] }>('/api/painel/horarios-desconto').then((resposta) => {
+      setFaixas(resposta.dados?.horarios ?? [])
+    })
+  }, [api, versao])
+
+  return (
+    <Secao titulo="Horário com desconto" descricao="Uma faixa da semana sai mais barata. O valor é fixo, em reais.">
+      {faixas.length === 0 ? (
+        <Vazio>Nenhuma faixa ainda.</Vazio>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Faixa</th>
+                <th>Desconto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {faixas.map((faixa) => (
+                <tr key={faixa.id}>
+                  <td>{DIAS[faixa.diaSemana - 1]}</td>
+                  <td>
+                    {faixa.inicio}–{faixa.fim}
+                  </td>
+                  <td className="tabular-nums">{formatarPreco(Number(faixa.descontoCentavos))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <form
+        className="mt-6 grid gap-4 sm:grid-cols-2 max-w-xl"
+        noValidate
+        onSubmit={async (evento) => {
+          evento.preventDefault()
+          const centavos = reaisParaCentavos(desconto)
+          if (!inicio || !fim || inicio >= fim || centavos === null || centavos <= 0) {
+            setErro('Faixa válida e um desconto em reais.')
+            return
+          }
+          setErro(null)
+          setOcupado(true)
+          const resposta = await api.chamar('/api/painel/horarios-desconto', {
+            metodo: 'POST',
+            corpo: { diaSemana: Number(diaSemana), inicio, fim, descontoCentavos: centavos },
+          })
+          setOcupado(false)
+          if (!resposta.ok) {
+            setErro('A faixa não entrou.')
+            return
+          }
+          setVersao((atual) => atual + 1)
+        }}
+      >
+        <Selecao label="Dia" value={diaSemana} onChange={(e) => setDiaSemana(e.target.value)}>
+          {DIAS.map((nome, indice) => (
+            <option key={nome} value={indice + 1}>
+              {nome}
+            </option>
+          ))}
+        </Selecao>
+        <Campo label="Desconto" inputMode="decimal" value={desconto} onChange={(e) => setDesconto(e.target.value)} />
+        <Campo label="Das" type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} />
+        <Campo label="Às" type="time" value={fim} onChange={(e) => setFim(e.target.value)} />
+        <div className="sm:col-span-2 flex flex-col gap-3">
+          <Falha>{erro}</Falha>
+          <Button type="submit" variant="outline" ocupado={ocupado} className="self-start">
+            Gravar faixa
+          </Button>
+        </div>
+      </form>
+    </Secao>
   )
 }

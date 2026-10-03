@@ -593,7 +593,38 @@ export function criarAplicacao(deps: {
     if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
     const resultado = await fecharAtendimento(deps.caixa, pedido);
     if (!resultado.ok) return c.json({ erro: resultado.erro }, 422);
+    if (pedido.agendamentoId) {
+      await deps.agenda.definirEstado(pedido.agendamentoId, "concluido");
+    }
     return c.json({ id: resultado.atendimento.id, totalCentavos: resultado.atendimento.totalCentavos, comprovante: comprovante(resultado.atendimento) }, 201);
+  });
+
+  app.get("/api/painel/produtos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    return c.json({ produtos: await deps.caixa.listarProdutos() });
+  });
+
+  app.get("/api/painel/planos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const clienteId = c.req.query("clienteId");
+    return c.json({ planos: await deps.caixa.listarPlanos(clienteId && clienteId !== "" ? clienteId : null) });
+  });
+
+  app.get("/api/painel/sinais", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const agendamentoId = c.req.query("agendamentoId");
+    if (!agendamentoId) return c.json({ erro: "pedido_invalido" }, 400);
+    return c.json({ sinal: await deps.caixa.sinalDoAgendamento(agendamentoId) });
+  });
+
+  app.get("/api/painel/caixa", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const de = dataDe(c.req.query("de"));
+    const ate = dataDe(c.req.query("ate"));
+    if (!de || !ate) return c.json({ erro: "pedido_invalido" }, 400);
+    const meios = await deps.caixa.caixaDoPeriodo(de, ate);
+    const totalCentavos = meios.reduce((soma, meio) => soma + Number(meio.valorCentavos), 0);
+    return c.json({ totalCentavos, meios });
   });
 
   app.get("/api/atendimentos/:id/comprovante", async (c) => {
@@ -689,6 +720,20 @@ export function criarAplicacao(deps: {
     return c.json(espera, 201);
   });
 
+  app.get("/api/painel/espera", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const lista = await deps.relacao.listarEspera();
+    return c.json({
+      espera: lista.map((item) => ({ ...item, desejadoEm: new Date(item.desejadoEm).toISOString() })),
+    });
+  });
+
+  app.delete("/api/painel/espera/:id", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    await deps.relacao.removerEspera(c.req.param("id"));
+    return c.json({ ok: true });
+  });
+
   app.post("/api/painel/recorrencias", async (c) => {
     if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
@@ -704,6 +749,32 @@ export function criarAplicacao(deps: {
     });
     const proxima = proximaRecorrencia(dados.diaSemana, dados.hora, deps.relogio.agora());
     return c.json({ ...recorrencia, proxima: proxima?.toISOString() ?? null }, 201);
+  });
+
+  app.get("/api/painel/recorrencias", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const agora = deps.relogio.agora();
+    const lista = await deps.relacao.listarRecorrencias();
+    return c.json({
+      recorrencias: lista.map((item) => ({
+        ...item,
+        proxima: proximaRecorrencia(Number(item.diaSemana), item.hora, agora)?.toISOString() ?? null,
+      })),
+    });
+  });
+
+  app.get("/api/avaliacoes", async (c) => {
+    const publicadas = await deps.relacao.listarAvaliacoes(true);
+    return c.json({
+      avaliacoes: publicadas.map((item) => ({ id: item.id, nome: item.nome, texto: item.texto, nota: item.nota })),
+    });
+  });
+
+  app.get("/api/painel/avaliacoes", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const filtro = c.req.query("publicada");
+    const publicada = filtro === "true" ? true : filtro === "false" ? false : null;
+    return c.json({ avaliacoes: await deps.relacao.listarAvaliacoes(publicada) });
   });
 
   app.post("/api/avaliacoes", async (c) => {
@@ -752,7 +823,19 @@ export function criarAplicacao(deps: {
     if (typeof dados.nome !== "string" || typeof dados.texto !== "string") return c.json({ erro: "pedido_invalido" }, 400);
     const campanha = await deps.relacao.criarCampanha({ nome: dados.nome, texto: dados.texto });
     const audiencia = await deps.relacao.audiencia();
-    return c.json({ ...campanha, destinatarios: audiencia.length }, 201);
+    const canal = await deps.mensagens.canalAtivo();
+    let enviados = 0;
+    if (canal) {
+      for (const pessoa of audiencia) {
+        const resultado = await deps.mensageiro.enviar({ para: pessoa.telefone, texto: dados.texto });
+        if (resultado.ok) enviados += 1;
+        else if (resultado.banido) {
+          await deps.mensagens.desligarCanal();
+          break;
+        }
+      }
+    }
+    return c.json({ ...campanha, destinatarios: audiencia.length, enviados, canal }, 201);
   });
 
   app.post("/api/painel/cupons", async (c) => {
@@ -797,6 +880,54 @@ export function criarAplicacao(deps: {
       descontoCentavos: dados.descontoCentavos,
     });
     return c.json(horario, 201);
+  });
+
+  app.get("/api/painel/horarios-desconto", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    return c.json({ horarios: await deps.relacao.listarHorariosDesconto() });
+  });
+
+  app.get("/api/painel/clientes", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const telefone = c.req.query("telefone");
+    if (!telefone) return c.json({ erro: "pedido_invalido" }, 400);
+    const normalizado = normalizarTelefone(telefone);
+    if (!normalizado) return c.json({ erro: "pedido_invalido" }, 400);
+    const cliente = await deps.agenda.clientePorTelefone(normalizado);
+    if (!cliente) return c.json({ erro: "nao_encontrado" }, 404);
+    const [perfil, historico, planos] = await Promise.all([
+      deps.relacao.ficha(cliente.id),
+      deps.agenda.historicoDoCliente(cliente.id),
+      deps.caixa.listarPlanos(cliente.id),
+    ]);
+    return c.json({
+      cliente: {
+        ...fichaPublica(cliente),
+        pontos: perfil?.pontos ?? 0,
+        observacao: perfil?.observacao ?? null,
+        runClub: perfil?.runClub ?? false,
+        optIn: perfil?.optIn ?? false,
+      },
+      historico: historico.map((item) => ({
+        id: item.id,
+        barbeiro: item.barbeiro,
+        inicio: item.inicio.toISOString(),
+        fim: item.fim.toISOString(),
+        estado: item.estado,
+        servicos: item.itens.map((servico) => servico.nome),
+      })),
+      planos,
+    });
+  });
+
+  app.put("/api/painel/clientes/:id", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { observacao?: unknown }).observacao !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    await deps.relacao.gravarObservacao(c.req.param("id"), (corpo as { observacao: string }).observacao.trim());
+    return c.json({ ok: true });
   });
 
   app.get("/api/painel/relatorio.csv", async (c) => {
@@ -912,6 +1043,11 @@ export function criarAplicacao(deps: {
     } catch {
       return c.json({ erro: "ja_inscrito" }, 409);
     }
+  });
+
+  app.get("/api/painel/run/:id/inscritos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    return c.json({ inscritos: await deps.casa.inscritos(c.req.param("id")) });
   });
 
   app.post("/api/painel/run/:id/checkin", async (c) => {
@@ -1095,6 +1231,7 @@ function lerBloqueio(corpo: unknown): {
 function serializarLinha(linha: LinhaDaAgenda) {
   return {
     id: linha.id,
+    clienteId: linha.clienteId,
     nome: linha.nome,
     telefone: linha.telefone,
     inicio: linha.inicio.toISOString(),
@@ -1105,6 +1242,7 @@ function serializarLinha(linha: LinhaDaAgenda) {
       id: item.servicoId,
       nome: item.nome,
       duracaoMinutos: item.duracaoMinutos,
+      precoCentavos: item.precoCentavos,
     })),
   };
 }

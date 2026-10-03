@@ -123,6 +123,51 @@ export function criarRepositorioCaixa(sql: Sql): RepositorioCaixa {
       `;
       return linha;
     },
+
+    async listarProdutos() {
+      return sql<Produto[]>`
+        select id, nome, preco_centavos as "precoCentavos", estoque
+        from produtos where ativo = true order by nome
+      `;
+    },
+
+    async listarPlanos(clienteId) {
+      if (clienteId) {
+        return sql<Array<{ id: string; clienteId: string; nome: string; valorCentavos: number }>>`
+          select id, cliente_id as "clienteId", nome, valor_centavos as "valorCentavos"
+          from planos where ativo = true and cliente_id = ${clienteId}
+          order by nome
+        `;
+      }
+      return sql<Array<{ id: string; clienteId: string; nome: string; valorCentavos: number }>>`
+        select id, cliente_id as "clienteId", nome, valor_centavos as "valorCentavos"
+        from planos where ativo = true order by nome
+      `;
+    },
+
+    async sinalDoAgendamento(agendamentoId) {
+      const [linha] = await sql<
+        Array<{ id: string; meio: string; valorCentavos: number; situacao: "pendente" | "pago" }>
+      >`
+        select id, meio, valor_centavos as "valorCentavos", situacao
+        from pagamentos
+        where agendamento_id = ${agendamentoId} and origem = 'sinal'
+        order by criado_em desc
+        limit 1
+      `;
+      return linha ?? null;
+    },
+
+    async caixaDoPeriodo(de, ate) {
+      return sql<Array<{ meio: string; valorCentavos: number }>>`
+        select meio, coalesce(sum(valor_centavos), 0)::int as "valorCentavos"
+        from pagamentos
+        where origem = 'cadeira' and situacao = 'pago'
+          and criado_em >= ${de.toISOString()} and criado_em < ${ate.toISOString()}
+        group by meio
+        order by meio
+      `;
+    },
   };
 }
 

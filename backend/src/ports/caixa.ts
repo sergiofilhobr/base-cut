@@ -38,6 +38,17 @@ export interface RepositorioCaixa {
   valePorCodigo(codigo: string): Promise<{ id: string; saldoCentavos: number } | null>;
   debitarVale(id: string, valorCentavos: number): Promise<boolean>;
   criarPlano(dados: { clienteId: string; nome: string; valorCentavos: number }): Promise<{ id: string }>;
+  listarProdutos(): Promise<Produto[]>;
+  listarPlanos(clienteId: string | null): Promise<
+    Array<{ id: string; clienteId: string; nome: string; valorCentavos: number }>
+  >;
+  sinalDoAgendamento(agendamentoId: string): Promise<{
+    id: string;
+    meio: string;
+    valorCentavos: number;
+    situacao: "pendente" | "pago";
+  } | null>;
+  caixaDoPeriodo(de: Date, ate: Date): Promise<Array<{ meio: string; valorCentavos: number }>>;
 }
 
 export interface Cobrancas {
