@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { CATALOGO_INICIAL, EXPEDIENTE_INICIAL } from "../../application/catalogo-inicial.ts";
+import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alterar-agendamento.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
 import { verificarSaude } from "../../application/verificar-saude.ts";
 import { normalizarEmail, normalizarTelefone } from "../../domain/cliente/identidade.ts";
-import type { RepositorioAgenda } from "../../ports/agenda.ts";
+import { podeCancelarPeloCliente } from "../../domain/agenda/regras.ts";
+import type { AgendamentoDetalhe, RepositorioAgenda } from "../../ports/agenda.ts";
 import type { Banco } from "../../ports/banco.ts";
 import type { Relogio } from "../../ports/relogio.ts";
 
@@ -64,6 +66,7 @@ export function criarAplicacao(deps: {
     const dia = c.req.query("dia") ?? "";
     const servicoIds = (c.req.query("servicoIds") ?? "").split(",").filter(Boolean);
     const barbeiroId = c.req.query("barbeiroId") || undefined;
+    const excetoAgendamentoId = c.req.query("exceto") || undefined;
     if (!DIA.test(dia) || servicoIds.length === 0) {
       return c.json({ erro: "pedido_invalido" }, 400);
     }
@@ -71,6 +74,7 @@ export function criarAplicacao(deps: {
       dia,
       servicoIds,
       barbeiroId,
+      excetoAgendamentoId,
     });
     if (!resultado.ok) return c.json({ erro: resultado.erro }, 422);
     return c.json({
@@ -103,6 +107,44 @@ export function criarAplicacao(deps: {
       },
       201,
     );
+  });
+
+  app.get("/api/agendamentos/:id", async (c) => {
+    const telefone = normalizarTelefone(c.req.query("telefone") ?? "");
+    if (!telefone) return c.json({ erro: "pedido_invalido" }, 400);
+    const detalhe = await deps.agenda.buscarAgendamento(c.req.param("id"));
+    if (!detalhe || detalhe.telefone !== telefone) return c.json({ erro: "nao_encontrado" }, 404);
+    return c.json(respostaDeAgendamento(detalhe, deps.relogio.agora()));
+  });
+
+  app.post("/api/agendamentos/:id/cancelar", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const telefone = telefoneDoCorpo(corpo);
+    if (!telefone) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await cancelarPeloCliente(deps.agenda, deps.relogio, {
+      id: c.req.param("id"),
+      telefone,
+    });
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/agendamentos/:id/reagendar", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const telefone = telefoneDoCorpo(corpo);
+    const inicio = inicioDoCorpo(corpo);
+    if (!telefone || !inicio) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await reagendarPeloCliente(deps.agenda, deps.relogio, {
+      id: c.req.param("id"),
+      telefone,
+      inicio,
+    });
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    return c.json({
+      ok: true,
+      inicio: resultado.inicio.toISOString(),
+      fim: resultado.fim.toISOString(),
+    });
   });
 
   app.put("/api/expediente", async (c) => {
@@ -151,6 +193,44 @@ function lerPedido(corpo: unknown) {
     telefone,
     email,
     barbeiroId: typeof dados.barbeiroId === "string" ? dados.barbeiroId : undefined,
+  };
+}
+
+function telefoneDoCorpo(corpo: unknown) {
+  if (!corpo || typeof corpo !== "object") return null;
+  const telefone = (corpo as { telefone?: unknown }).telefone;
+  if (typeof telefone !== "string") return null;
+  return normalizarTelefone(telefone);
+}
+
+function inicioDoCorpo(corpo: unknown) {
+  if (!corpo || typeof corpo !== "object") return null;
+  const inicio = (corpo as { inicio?: unknown }).inicio;
+  if (typeof inicio !== "string") return null;
+  const data = new Date(inicio);
+  if (Number.isNaN(data.getTime())) return null;
+  return data;
+}
+
+function statusDaAlteracao(erro: string) {
+  if (erro === "nao_encontrado") return 404;
+  if (erro === "horario_indisponivel") return 409;
+  return 422;
+}
+
+function respostaDeAgendamento(detalhe: AgendamentoDetalhe, agora: Date) {
+  return {
+    id: detalhe.id,
+    inicio: detalhe.inicio.toISOString(),
+    fim: detalhe.fim.toISOString(),
+    estado: detalhe.estado,
+    podeAlterar:
+      detalhe.estado === "confirmado" && podeCancelarPeloCliente(agora, detalhe.inicio),
+    servicos: detalhe.itens.map((item) => ({
+      id: item.servicoId,
+      nome: item.nome,
+      duracaoMinutos: item.duracaoMinutos,
+    })),
   };
 }
 
