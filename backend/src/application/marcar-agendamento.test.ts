@@ -35,6 +35,12 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
     async barbeiroAtivo() {
       return { id: "bruno", nome: "Bruno" };
     },
+    async barbeiroPorId(id) {
+      return id === "bruno" ? { id: "bruno", nome: "Bruno" } : null;
+    },
+    async listarBarbeirosAtivos() {
+      return [{ id: "bruno", nome: "Bruno" }];
+    },
     async listarServicosAtivos() {
       return [corte];
     },
@@ -109,4 +115,30 @@ test("recusa e-mail que já é de outro telefone", async () => {
   });
 
   assert.deepEqual(resultado, { ok: false, erro: "email_de_outra_ficha" });
+});
+
+test("o segundo cliente não leva o mesmo horário", async () => {
+  const agenda = agendaFalsa();
+  const relogio = relogioFixo("2026-10-01T12:00:00-03:00");
+  const inicio = new Date("2026-10-05T12:00:00.000Z");
+
+  const primeiro = await marcarAgendamento(agenda, relogio, {
+    servicoIds: ["corte"],
+    inicio,
+    nome: "Ana",
+    telefone: "47999999999",
+    email: "ana@email.com",
+    origem: "site",
+  });
+  const segundo = await marcarAgendamento(agenda, relogio, {
+    servicoIds: ["corte"],
+    inicio,
+    nome: "Bruno Cliente",
+    telefone: "47988888888",
+    email: "outro@email.com",
+    origem: "site",
+  });
+
+  assert.equal(primeiro.ok, true);
+  assert.deepEqual(segundo, { ok: false, erro: "horario_indisponivel" });
 });

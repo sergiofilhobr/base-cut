@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { BOOKSY_URL } from '@/app/lib/constants'
 import servicesData from '@/app/lib/services.json'
+import { formatarDuracao, formatarPreco, servicosDaApi } from '@/app/lib/agenda'
 
 /* Hallmark · genre: editorial · macrostructure: Catalogue
  * design-system: design.md · designed-as-app
@@ -11,14 +12,18 @@ const priceFormatter = new Intl.NumberFormat('pt-BR', {
   currency: 'BRL',
 })
 
+type Linha = { nome: string; preco: string; duracao: string }
+
 /**
  * PriceTable — a tabela completa de preços.
  *
  * Vive na coluna direita de /servicos, ao lado do índice de serviços.
- * Tipografia e régua: nome e duração à esquerda, preço à direita, CTA
- * primário ao final.
+ * Lê a API. Se ela estiver fora, a tabela estática segura a página.
+ * O CTA continua no Booksy até o corte do link público.
  */
-export function PriceTable() {
+export async function PriceTable() {
+  const linhas = await linhasDePreco()
+
   return (
     <div>
       <h2
@@ -32,22 +37,22 @@ export function PriceTable() {
       </h2>
 
       <ul className="mt-6 divide-y divide-rule border-t-2 border-ink">
-        {servicesData.services.map((service) => (
+        {linhas.map((service) => (
           <li
-            key={service.name}
+            key={service.nome}
             className="flex items-baseline justify-between gap-4 py-3"
           >
             <div>
-              <p className="text-sm text-ink">{service.name}</p>
+              <p className="text-sm text-ink">{service.nome}</p>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted mt-0.5">
-                {service.duration}
+                {service.duracao}
               </p>
             </div>
             <p
               className="text-sm font-semibold text-ink shrink-0"
               style={{ fontVariantNumeric: 'tabular-nums' }}
             >
-              {priceFormatter.format(service.price)}
+              {service.preco}
             </p>
           </li>
         ))}
@@ -71,4 +76,21 @@ export function PriceTable() {
       </Link>
     </div>
   )
+}
+
+async function linhasDePreco(): Promise<Linha[]> {
+  const servicos = await servicosDaApi()
+  if (servicos) {
+    return servicos.map((servico) => ({
+      nome: servico.nome,
+      duracao: formatarDuracao(servico.duracaoMinutos),
+      preco: formatarPreco(servico.precoCentavos),
+    }))
+  }
+
+  return servicesData.services.map((service) => ({
+    nome: service.name,
+    duracao: service.duration,
+    preco: priceFormatter.format(service.price),
+  }))
 }
