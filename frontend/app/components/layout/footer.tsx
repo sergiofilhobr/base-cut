@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { AgendaNoColofao, LinkAgendar } from '@/app/components/ui/link-agendar'
 
 /* Hallmark · footer archetype: Ft4 Dense colophon · design-system: design.md */

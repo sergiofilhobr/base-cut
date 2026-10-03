@@ -2,10 +2,23 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "basecut-dev",
+      "name": "basecut-site",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": [
+        "run",
+        "dev:frontend"
+      ],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "basecut-api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:backend"
+      ],
+      "port": 4000
     }
   ]
 }

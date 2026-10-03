@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { serve } from "@hono/node-server";
 import { criarCobrancas } from "./adapters/caixa/cobrancas.ts";
 import { criarAutenticacaoClerk } from "./adapters/auth/clerk.ts";
+import { criarAutenticacaoLocal } from "./adapters/auth/local.ts";
 import { criarInterpretador } from "./adapters/eve/interpretador.ts";
 import { criarMensageiroZApi } from "./adapters/whatsapp/z-api.ts";
 import { relogioDoSistema } from "./adapters/relogio/relogio-do-sistema.ts";
@@ -31,14 +32,23 @@ const mensageiro = criarMensageiroZApi({
 });
 const urlDoSite = process.env.SITE_URL ?? "http://localhost:3000";
 
+const autenticacaoLocal =
+  process.env.AUTH_LOCAL === "1" && !process.env.CLERK_SECRET_KEY && process.env.NODE_ENV !== "production";
+if (autenticacaoLocal) {
+  console.warn("AUTH_LOCAL=1: autenticação local, sem Clerk. Só para desenvolvimento.");
+}
+const autenticacao = autenticacaoLocal
+  ? criarAutenticacaoLocal()
+  : criarAutenticacaoClerk({
+      secretKey: process.env.CLERK_SECRET_KEY,
+      orgId: process.env.CLERK_ORG_ID,
+    });
+
 const app = criarAplicacao({
   banco,
   relogio: relogioDoSistema,
   agenda: banco.agenda,
-  autenticacao: criarAutenticacaoClerk({
-    secretKey: process.env.CLERK_SECRET_KEY,
-    orgId: process.env.CLERK_ORG_ID,
-  }),
+  autenticacao,
   mensagens: banco.mensagens,
   mensageiro,
   interpretador: criarInterpretador({

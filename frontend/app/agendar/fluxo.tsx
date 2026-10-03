@@ -30,7 +30,19 @@ const ERROS: Record<string, string> = {
   sem_consentimento: 'A marcação pede o seu consentimento.',
 }
 
-export function FluxoAgendar() {
+export type FichaDoFluxo = { nome: string; telefone: string; email: string | null }
+
+/**
+ * Com `ficha`, o fluxo é o do cliente logado: não pede nome, telefone nem
+ * e-mail, e o consentimento já foi dado no cadastro. Sem ela, é o público.
+ */
+export function FluxoAgendar({
+  ficha,
+  destinoAoConcluir,
+}: {
+  ficha?: FichaDoFluxo
+  destinoAoConcluir?: string
+} = {}) {
   const [etapa, setEtapa] = useState<Etapa>('servicos')
   const [servicos, setServicos] = useState<ServicoAgenda[] | null>(null)
   const [barbeiros, setBarbeiros] = useState<BarbeiroAgenda[]>([])
@@ -39,10 +51,10 @@ export function FluxoAgendar() {
   const [dia, setDia] = useState(diaCivil())
   const [horarios, setHorarios] = useState<string[]>([])
   const [inicio, setInicio] = useState<string | null>(null)
-  const [nome, setNome] = useState('')
-  const [telefone, setTelefone] = useState('')
-  const [email, setEmail] = useState('')
-  const [consentimento, setConsentimento] = useState(false)
+  const [nome, setNome] = useState(ficha?.nome ?? '')
+  const [telefone, setTelefone] = useState(ficha?.telefone ?? '')
+  const [email, setEmail] = useState(ficha?.email ?? '')
+  const [consentimento, setConsentimento] = useState(Boolean(ficha))
   const [marketing, setMarketing] = useState(false)
   const [naEspera, setNaEspera] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -262,7 +274,7 @@ export function FluxoAgendar() {
               min={hoje}
               max={limite}
               onChange={(evento) => setDia(evento.target.value)}
-              className="mt-2 block w-full border-b border-ink bg-transparent py-3 text-base text-ink"
+              className="input mt-2 w-full text-base"
             />
           </label>
           {horarios.length === 0 ? (
@@ -275,8 +287,8 @@ export function FluxoAgendar() {
                     type="button"
                     aria-pressed={inicio === horario}
                     onClick={() => setInicio(horario)}
-                    className={`min-h-11 min-w-16 px-3 py-2 font-mono text-xs ${
-                      inicio === horario ? 'bg-ink text-paper' : 'border border-rule text-ink'
+                    className={`btn btn-sm min-w-16 font-mono text-xs font-normal shadow-none ${
+                      inicio === horario ? 'btn-primary' : 'btn-outline'
                     }`}
                   >
                     {formatarHorario(horario)}
@@ -322,7 +334,42 @@ export function FluxoAgendar() {
         </div>
       )}
 
-      {etapa === 'dados' && inicio && (
+      {etapa === 'dados' && inicio && ficha && (
+        <div className="mt-6">
+          <ul className="border-t-2 border-ink max-w-md">
+            {servicos
+              .filter((servico) => escolhidos.includes(servico.id))
+              .map((servico) => (
+                <li key={servico.id} className="flex items-baseline justify-between gap-6 border-b border-rule py-3 text-sm">
+                  <span className="text-ink">{servico.nome}</span>
+                  <span className="tabular-nums text-muted">{formatarPreco(servico.precoCentavos)}</span>
+                </li>
+              ))}
+          </ul>
+          <p className="mt-4 font-display text-3xl font-black uppercase leading-none text-ink">
+            {formatarHorario(inicio)}
+          </p>
+          <p className="mt-2 text-sm capitalize text-muted">{formatarDiaLongo(inicio)}</p>
+          <p className="mt-4 text-sm text-ink">
+            Para {ficha.nome} · {ficha.telefone}
+          </p>
+          {erro && <p className="mt-4 text-sm text-ink">{erro}</p>}
+          <div className="flex flex-wrap items-center gap-4">
+            <Botao onClick={() => void confirmar()} disabled={enviando}>
+              {enviando ? 'Gravando' : 'Confirmar horário'}
+            </Botao>
+            <button
+              type="button"
+              onClick={() => setEtapa('horario')}
+              className="mt-8 font-mono text-xs uppercase tracking-[0.2em] text-muted underline-offset-4 hover:underline"
+            >
+              Outro horário
+            </button>
+          </div>
+        </div>
+      )}
+
+      {etapa === 'dados' && inicio && !ficha && (
         <form
           className="mt-6 flex flex-col gap-5"
           onSubmit={(evento) => {
@@ -350,7 +397,7 @@ export function FluxoAgendar() {
               type="checkbox"
               checked={consentimento}
               onChange={(evento) => setConsentimento(evento.target.checked)}
-              className="mt-1"
+              className="checkbox checkbox-sm mt-0.5"
             />
             Concordo em guardar nome, telefone e e-mail para marcar e lembrar este horário.
           </label>
@@ -359,7 +406,7 @@ export function FluxoAgendar() {
               type="checkbox"
               checked={marketing}
               onChange={(evento) => setMarketing(evento.target.checked)}
-              className="mt-1"
+              className="checkbox checkbox-sm mt-0.5"
             />
             Quero receber campanha e oferta. Posso sair quando quiser.
           </label>
@@ -383,10 +430,10 @@ export function FluxoAgendar() {
             Horário confirmado. Até lá, na base.
           </p>
           <Link
-            href={`/agendamento/${confirmado.id}`}
+            href={destinoAoConcluir ?? `/agendamento/${confirmado.id}`}
             className="mt-6 inline-block font-mono text-xs uppercase tracking-[0.2em] text-ink underline"
           >
-            Cancelar ou mudar o horário
+            {destinoAoConcluir ? 'Ver meus horários' : 'Cancelar ou mudar o horário'}
           </Link>
         </div>
       )}
@@ -418,14 +465,7 @@ function Botao({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className="
-        mt-8 inline-flex min-h-12 items-center px-8 py-4
-        font-mono text-xs uppercase tracking-[0.2em]
-        bg-ink text-paper
-        disabled:opacity-40
-        focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
-        focus-visible:outline-ink
-      "
+      className="btn btn-primary btn-lg mt-8 px-8 font-mono text-xs font-normal uppercase tracking-[0.2em] shadow-none"
     >
       {children}
     </button>
@@ -448,17 +488,20 @@ function Campo({
   inputMode?: 'tel' | 'text'
 }) {
   return (
-    <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-      {label}
+    <fieldset className="fieldset p-0">
+      <legend className="fieldset-legend pb-1.5 font-mono text-[10px] font-normal uppercase tracking-[0.2em] text-muted">
+        {label}
+      </legend>
       <input
         required
+        aria-label={label}
         type={type}
         inputMode={inputMode}
         autoComplete={autoComplete}
         value={value}
         onChange={(evento) => onChange(evento.target.value)}
-        className="mt-2 block w-full border-b border-ink bg-transparent py-3 text-base text-ink outline-none"
+        className="input w-full text-base"
       />
-    </label>
+    </fieldset>
   )
 }

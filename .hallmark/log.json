@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-10-03",
+    "macrostructure": "Workbench (app)",
+    "theme": "design.md (sistema travado do projeto) · daisyUI",
+    "enrichment": "none",
+    "brief": "Base Cut · /app — painel da equipe (Hoje, Agenda, Expediente, Casa) e agenda do cliente (Horários, Marcar, Ficha); nav N7 variante app"
+  },
+  {
     "date": "2026-09-05",
     "macrostructure": "Index-First",
     "theme": "design.md (sistema travado do projeto)",

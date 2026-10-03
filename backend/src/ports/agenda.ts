@@ -63,6 +63,15 @@ export type AgendamentoDetalhe = {
 
 export type LinhaDaAgenda = AgendamentoDetalhe & { nome: string; criadoEm: Date };
 
+export type HistoricoDoCliente = {
+  id: string;
+  barbeiro: string;
+  inicio: Date;
+  fim: Date;
+  estado: EstadoAgendamento;
+  itens: ItemAgendamento[];
+};
+
 export type Bloqueio = {
   id: string;
   inicio: Date;
@@ -132,6 +141,8 @@ export interface RepositorioAgenda {
   agendamentosDoCliente(
     clienteId: string,
   ): Promise<Array<{ id: string; inicio: Date; fim: Date; estado: EstadoAgendamento }>>;
+  historicoDoCliente(clienteId: string): Promise<HistoricoDoCliente[]>;
+  atualizarCliente(clienteId: string, dados: { nome?: string; email?: string | null }): Promise<void>;
   semearSeVazio(dados: {
     barbeiro: string;
     servicos: Array<{ nome: string; duracaoMinutos: number; precoCentavos: number }>;

@@ -1,9 +1,6 @@
 import { Scissors, Star, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-export const BOOKSY_URL =
-  'https://booksy.com/pt-br/instant-experiences/widget/404263?utm_source=ig&utm_medium=social&utm_content=link_in_bio'
-
 export const INSTAGRAM_URL = 'https://instagram.com/basecut_'
 export const INSTAGRAM_HANDLE = '@basecut_'
 

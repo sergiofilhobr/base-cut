@@ -117,7 +117,20 @@ export function MobileDrawer({ open, onClose, pathname }: MobileDrawerProps) {
           </ul>
         </nav>
 
-        <div className="px-6 py-6 border-t-2 border-ink">
+        <div className="px-6 py-6 border-t-2 border-ink flex flex-col gap-4">
+          <Link
+            href="/app"
+            onClick={onClose}
+            className="
+              font-mono text-xs uppercase tracking-[0.2em] text-ink
+              border-b border-rule self-start pb-0.5
+              hover:border-ink
+              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4
+              focus-visible:outline-ink
+            "
+          >
+            Sua conta
+          </Link>
           <LinkAgendar
             onClick={onClose}
             className="

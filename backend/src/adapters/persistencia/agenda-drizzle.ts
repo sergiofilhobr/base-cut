@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lt, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, ne } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { Sql } from "postgres";
 import type { Faixa } from "../../domain/agenda/horarios-livres.ts";
@@ -373,6 +373,43 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
         ...linha,
         estado: linha.estado as EstadoAgendamento,
       }));
+    },
+
+    async historicoDoCliente(clienteId) {
+      const linhas = await db
+        .select({
+          id: agendamentos.id,
+          barbeiro: barbeiros.nome,
+          inicio: agendamentos.inicio,
+          fim: agendamentos.fim,
+          estado: agendamentos.estado,
+        })
+        .from(agendamentos)
+        .innerJoin(barbeiros, eq(barbeiros.id, agendamentos.barbeiroId))
+        .where(eq(agendamentos.clienteId, clienteId))
+        .orderBy(desc(agendamentos.inicio));
+      if (linhas.length === 0) return [];
+      const itens = await db
+        .select({
+          agendamentoId: itensAgendamento.agendamentoId,
+          servicoId: itensAgendamento.servicoId,
+          nome: itensAgendamento.nome,
+          duracaoMinutos: itensAgendamento.duracaoMinutos,
+          precoCentavos: itensAgendamento.precoCentavos,
+        })
+        .from(itensAgendamento)
+        .where(inArray(itensAgendamento.agendamentoId, linhas.map((linha) => linha.id)));
+      return linhas.map((linha) => ({
+        ...linha,
+        estado: linha.estado as EstadoAgendamento,
+        itens: itens
+          .filter((item) => item.agendamentoId === linha.id)
+          .map(({ agendamentoId: _agendamentoId, ...item }) => item),
+      }));
+    },
+
+    async atualizarCliente(clienteId, dados) {
+      await db.update(clientes).set(dados).where(eq(clientes.id, clienteId));
     },
 
     async anonimizarCliente(id) {

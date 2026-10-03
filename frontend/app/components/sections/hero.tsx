@@ -8,7 +8,7 @@ import { SMOOTH_CONFIG } from '@/app/lib/motion'
 const DATA_ROWS = [
   ['Onde', 'Itajaí — SC'],
   ['Rua', 'Juvenal García, 64'],
-  ['Agenda', 'Booksy'],
+  ['Agenda', 'Pelo site'],
   ['Base Run', 'Domingos'],
 ] as const
 

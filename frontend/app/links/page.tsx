@@ -40,7 +40,7 @@ interface Slab {
 /**
  * A ordem é a do cliente, e ela mistura de propósito o que é de fora e o que é
  * do site — por isso não há mais divisão "Redes" / "No site". Quem abre a bio
- * quer marcar (o Booksy, acima), ver a casa, ver o preço e saber o caminho,
+ * quer marcar (o CTA, acima), ver a casa, ver o preço e saber o caminho,
  * nessa sequência.
  */
 const PRINCIPAIS: Slab[] = [
@@ -89,7 +89,7 @@ function SlabContent({ label, meta }: Pick<Slab, 'label' | 'meta'>) {
 
 /**
  * Uma pilha de slabs. `titulo` é opcional: a lista principal vem direto abaixo
- * do Booksy, sem rótulo — rotular os dois grupos empataria a hierarquia que a
+ * do CTA, sem rótulo — rotular os dois grupos empataria a hierarquia que a
  * ordem acabou de estabelecer. O segundo grupo ganha o rótulo porque precisa
  * dizer que é o resto.
  */

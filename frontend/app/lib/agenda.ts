@@ -77,3 +77,61 @@ export async function servicosDaApi(): Promise<ServicoAgenda[] | null> {
     return null
   }
 }
+
+/** "ter, 3 out" — para listas densas. */
+export function formatarDataCurta(iso: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+    .format(new Date(iso))
+    .replace('.', '')
+}
+
+/** O dia civil (YYYY-MM-DD) de um instante, no fuso da casa. */
+export function diaCivilDe(iso: string) {
+  return diaCivil(new Date(iso))
+}
+
+/** Intervalo [de, ate) de um dia civil, em ISO. */
+export function intervaloDoDia(dia: string) {
+  const inicio = new Date(`${dia}T00:00:00-03:00`)
+  return {
+    de: inicio.toISOString(),
+    ate: new Date(inicio.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+  }
+}
+
+/** Intervalo [segunda, segunda seguinte) da semana que contém o dia. */
+export function intervaloDaSemana(dia: string) {
+  const meioDia = new Date(`${dia}T12:00:00-03:00`)
+  const domingoZero = meioDia.getUTCDay()
+  const iso = domingoZero === 0 ? 7 : domingoZero
+  const segunda = somarDias(dia, 1 - iso)
+  const de = new Date(`${segunda}T00:00:00-03:00`)
+  return {
+    de: de.toISOString(),
+    ate: new Date(de.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  }
+}
+
+export const ROTULO_ESTADO: Record<string, string> = {
+  confirmado: 'Confirmado',
+  concluido: 'Concluído',
+  falta: 'Falta',
+  cancelado_pelo_cliente: 'Cancelado',
+  cancelado_pela_casa: 'Cancelado pela casa',
+}
+
+export function rotuloEstado(estado: string) {
+  return ROTULO_ESTADO[estado] ?? estado
+}
+
+/** Valor em centavos para o input: "50,00" ↔ 5000. */
+export function reaisParaCentavos(texto: string) {
+  const numero = Number(texto.replace(/\./g, '').replace(',', '.'))
+  if (!Number.isFinite(numero)) return null
+  return Math.round(numero * 100)
+}

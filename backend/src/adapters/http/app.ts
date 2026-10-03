@@ -5,6 +5,7 @@ import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alt
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
+import { cadastrarCliente } from "../../application/cadastrar-cliente.ts";
 import type { RepositorioCasa } from "../persistencia/casa-postgres.ts";
 import { cabeNaLista, servicosVisiveis, valorDoRepasse } from "../../domain/casa/regras.ts";
 import { avaliacaoNova, caminhoDoGoogle } from "../../application/avaliar.ts";
@@ -12,7 +13,6 @@ import { comprovante, fecharAtendimento } from "../../application/fechar-atendim
 import { aplicarCupom, podeReceberCampanha, pontosDaVisita, proximaRecorrencia, relatorioCsv, resumirRelatorio } from "../../domain/relacao/regras.ts";
 import type { RepositorioRelacao } from "../persistencia/relacao-postgres.ts";
 import { cobrarSinal } from "../../application/cobrar-sinal.ts";
-import { importarBooksy } from "../../application/importar-booksy.ts";
 import { excluirFicha, exportarFicha } from "../../application/lgpd.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
@@ -24,7 +24,7 @@ import type { Autenticacao } from "../../ports/autenticacao.ts";
 import type { Cobrancas, RepositorioCaixa } from "../../ports/caixa.ts";
 import type { Interpretador } from "../../ports/interpretador.ts";
 import type { Mensageiro, RepositorioMensagens } from "../../ports/mensagens.ts";
-import type { AgendamentoDetalhe, Bloqueio, LinhaDaAgenda, RepositorioAgenda } from "../../ports/agenda.ts";
+import type { AgendamentoDetalhe, Bloqueio, Cliente, LinhaDaAgenda, RepositorioAgenda } from "../../ports/agenda.ts";
 import type { Banco } from "../../ports/banco.ts";
 import type { Relogio } from "../../ports/relogio.ts";
 
@@ -75,12 +75,6 @@ export function criarAplicacao(deps: {
     return c.json({
       barbeiros: lista.map((barbeiro) => ({ id: barbeiro.id, nome: barbeiro.nome })),
     });
-  });
-
-  app.get("/api/casa", async (c) => {
-    const valor = await deps.agenda.lerConfiguracao("agendamento_publico");
-    const agendamento = valor === "site" ? "site" : "booksy";
-    return c.json({ agendamento });
   });
 
   app.get("/api/servicos", async (c) => {
@@ -284,6 +278,167 @@ export function criarAplicacao(deps: {
     });
   });
 
+  /** Quem está do outro lado do token: equipe ou cliente, e a ficha se houver. */
+  app.get("/api/eu", async (c) => {
+    const authorization = c.req.header("authorization");
+    const equipe = await deps.autenticacao.membro(authorization);
+    if (equipe) return c.json({ tipo: "equipe", papel: equipe.papel, userId: equipe.userId });
+    const sessao = await deps.autenticacao.cliente(authorization);
+    if (!sessao) return c.json({ erro: "nao_autorizado" }, 401);
+    const entrada = await entrarNaFicha(deps.agenda, {
+      clerkUserId: sessao.userId,
+      email: sessao.email,
+    });
+    if (!entrada.ok) {
+      return c.json({ tipo: "cliente", email: sessao.email, ficha: null, erro: entrada.erro });
+    }
+    const ficha = await deps.agenda.clientePorClerk(sessao.userId);
+    return c.json({ tipo: "cliente", email: sessao.email, ficha: ficha ? fichaPublica(ficha) : null });
+  });
+
+  app.post("/api/conta/cadastrar", async (c) => {
+    const sessao = await deps.autenticacao.cliente(c.req.header("authorization"));
+    if (!sessao) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.nome !== "string" || typeof dados.telefone !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const resultado = await cadastrarCliente(deps.agenda, {
+      clerkUserId: sessao.userId,
+      email: sessao.email,
+      nome: dados.nome,
+      telefone: dados.telefone,
+      consentimento: dados.consentimento === true,
+    });
+    if (!resultado.ok) {
+      const status =
+        resultado.erro === "email_de_outra_ficha" || resultado.erro === "telefone_de_outra_ficha" ? 409 : 422;
+      return c.json({ erro: resultado.erro }, resultado.erro === "pedido_invalido" ? 400 : status);
+    }
+    if (resultado.novo) {
+      await deps.agenda.registrarAuditoria({
+        agendamentoId: null,
+        clienteId: resultado.clienteId,
+        acao: "cadastro",
+        ator: `cliente:${sessao.userId}`,
+      });
+    }
+    if (dados.marketing === true) await deps.relacao.definirOptIn(resultado.clienteId, true);
+    const ficha = await deps.agenda.clientePorClerk(sessao.userId);
+    return c.json({ ficha: ficha ? fichaPublica(ficha) : null, novo: resultado.novo }, resultado.novo ? 201 : 200);
+  });
+
+  app.get("/api/conta/agendamentos", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    const agora = deps.relogio.agora();
+    const historico = await deps.agenda.historicoDoCliente(conta.ficha.id);
+    return c.json({
+      agendamentos: historico.map((linha) => ({
+        id: linha.id,
+        barbeiro: linha.barbeiro,
+        inicio: linha.inicio.toISOString(),
+        fim: linha.fim.toISOString(),
+        estado: linha.estado,
+        podeAlterar: linha.estado === "confirmado" && podeCancelarPeloCliente(agora, linha.inicio),
+        servicos: linha.itens.map((item) => ({
+          id: item.servicoId,
+          nome: item.nome,
+          duracaoMinutos: item.duracaoMinutos,
+          precoCentavos: item.precoCentavos,
+        })),
+      })),
+    });
+  });
+
+  app.post("/api/conta/agendamentos/:id/cancelar", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    const resultado = await cancelarPeloCliente(deps.agenda, deps.relogio, {
+      id: c.req.param("id"),
+      telefone: conta.ficha.telefone,
+    });
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: c.req.param("id"),
+      clienteId: conta.ficha.id,
+      acao: "cancelamento",
+      ator: `cliente:${conta.ficha.telefone}`,
+    });
+    return c.json({ ok: true });
+  });
+
+  app.post("/api/conta/agendamentos/:id/reagendar", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    const inicio = inicioDoCorpo(await c.req.json().catch(() => null));
+    if (!inicio) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await reagendarPeloCliente(deps.agenda, deps.relogio, {
+      id: c.req.param("id"),
+      telefone: conta.ficha.telefone,
+      inicio,
+    });
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, statusDaAlteracao(resultado.erro));
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: c.req.param("id"),
+      clienteId: conta.ficha.id,
+      acao: "reagendamento",
+      ator: `cliente:${conta.ficha.telefone}`,
+    });
+    return c.json({ ok: true, inicio: resultado.inicio.toISOString(), fim: resultado.fim.toISOString() });
+  });
+
+  app.get("/api/conta/ficha", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    const [agendamentos, historico, optIn] = await Promise.all([
+      deps.agenda.agendamentosDoCliente(conta.ficha.id),
+      deps.agenda.listarAuditoria(conta.ficha.id),
+      deps.relacao.optIn(conta.ficha.id),
+    ]);
+    return c.json({ ...fichaPublica(conta.ficha), optIn, agendamentos, historico });
+  });
+
+  app.post("/api/conta/marketing", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { optIn?: unknown }).optIn !== "boolean") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const optIn = (corpo as { optIn: boolean }).optIn;
+    await deps.relacao.definirOptIn(conta.ficha.id, optIn);
+    return c.json({ optIn, recebeCampanha: podeReceberCampanha(optIn) });
+  });
+
+  app.post("/api/conta/excluir", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: null,
+      clienteId: conta.ficha.id,
+      acao: "exclusao",
+      ator: `cliente:${conta.ficha.telefone}`,
+    });
+    await deps.agenda.anonimizarCliente(conta.ficha.id);
+    return c.json({ ok: true });
+  });
+
+  app.get("/api/expediente", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const pedidoId = c.req.query("barbeiroId");
+    const barbeiro = pedidoId ? await deps.agenda.barbeiroPorId(pedidoId) : await deps.agenda.barbeiroAtivo();
+    if (!barbeiro) return c.json({ erro: "sem_barbeiro" }, 422);
+    const dias = [1, 2, 3, 4, 5, 6, 7];
+    const porDia = await Promise.all(dias.map((dia) => deps.agenda.expediente(barbeiro.id, dia)));
+    const faixas = dias.flatMap((diaSemana, indice) =>
+      porDia[indice].map((faixa) => ({ diaSemana, inicio: faixa.inicio, fim: faixa.fim })),
+    );
+    return c.json({ barbeiroId: barbeiro.id, faixas });
+  });
+
   app.put("/api/expediente", async (c) => {
     const membro = await deps.autenticacao.membro(c.req.header("authorization"));
     if (!membro) return c.json({ erro: "nao_autorizado" }, 401);
@@ -429,26 +584,6 @@ export function criarAplicacao(deps: {
       ator: `equipe:${equipe.userId}`,
     });
     return c.json({ ok: true });
-  });
-
-  app.put("/api/painel/casa", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
-    const corpo = await c.req.json().catch(() => null);
-    const agendamento =
-      corpo && typeof corpo === "object" ? (corpo as { agendamento?: unknown }).agendamento : null;
-    if (agendamento !== "site" && agendamento !== "booksy") {
-      return c.json({ erro: "pedido_invalido" }, 400);
-    }
-    await deps.agenda.gravarConfiguracao("agendamento_publico", agendamento);
-    return c.json({ agendamento });
-  });
-
-  app.post("/api/painel/importacao/booksy", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
-    const csv = await c.req.text();
-    if (!csv.trim()) return c.json({ erro: "pedido_invalido" }, 400);
-    const resultado = await importarBooksy(deps.agenda, csv);
-    return c.json(resultado);
   });
 
   app.post("/api/painel/atendimentos", async (c) => {
@@ -812,6 +947,22 @@ export function criarAplicacao(deps: {
   });
 
   return app;
+}
+
+/** A sessão de cliente e a ficha ligada a ela. Sem ficha, não há conta. */
+async function fichaDaSessao(
+  c: { req: { header: (nome: string) => string | undefined } },
+  deps: { autenticacao: Autenticacao; agenda: RepositorioAgenda },
+) {
+  const sessao = await deps.autenticacao.cliente(c.req.header("authorization"));
+  if (!sessao) return null;
+  const ficha = await deps.agenda.clientePorClerk(sessao.userId);
+  if (!ficha) return null;
+  return { sessao, ficha };
+}
+
+function fichaPublica(ficha: Cliente) {
+  return { id: ficha.id, nome: ficha.nome, telefone: ficha.telefone, email: ficha.email };
 }
 
 async function admin(
