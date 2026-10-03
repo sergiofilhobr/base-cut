@@ -8,12 +8,12 @@ export default function PrivacidadePage() {
   const [ficha, setFicha] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
 
-  async function enviar(caminho: string) {
+  async function enviar(caminho: string, extra?: Record<string, unknown>) {
     setAviso(null)
     const resposta = await fetch(caminho, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ telefone, email }),
+      body: JSON.stringify({ telefone, email, ...extra }),
     })
     const dados = await resposta.json()
     if (!resposta.ok) {
@@ -69,6 +69,16 @@ export default function PrivacidadePage() {
             }}
           >
             Excluir
+          </button>
+          <button
+            type="button"
+            className="min-h-12 border border-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-ink"
+            onClick={async () => {
+              const dados = await enviar('/api/privacidade/marketing', { optIn: false })
+              if (dados?.recebeCampanha === false) setAviso('Você saiu das campanhas.')
+            }}
+          >
+            Sair das campanhas
           </button>
         </div>
         {aviso && <p className="text-sm text-ink">{aviso}</p>}

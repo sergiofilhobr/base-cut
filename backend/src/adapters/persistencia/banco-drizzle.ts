@@ -6,6 +6,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { Banco } from "../../ports/banco.ts";
 import type { RepositorioAgenda } from "../../ports/agenda.ts";
+import type { RepositorioRelacao } from "./relacao-postgres.ts";
+import { criarRepositorioRelacao } from "./relacao-postgres.ts";
 import type { RepositorioCaixa } from "../../ports/caixa.ts";
 import type { RepositorioMensagens } from "../../ports/mensagens.ts";
 import { criarRepositorioAgenda } from "./agenda-drizzle.ts";
@@ -21,6 +23,7 @@ export type BancoConectado = Banco & {
   agenda: RepositorioAgenda;
   mensagens: RepositorioMensagens;
   caixa: RepositorioCaixa;
+  relacao: RepositorioRelacao;
 };
 
 export function criarBanco(databaseUrl: string): BancoConectado {
@@ -48,5 +51,6 @@ export function criarBanco(databaseUrl: string): BancoConectado {
     agenda: criarRepositorioAgenda(cliente),
     mensagens: criarRepositorioMensagens(cliente),
     caixa: criarRepositorioCaixa(cliente),
+    relacao: criarRepositorioRelacao(cliente),
   };
 }
