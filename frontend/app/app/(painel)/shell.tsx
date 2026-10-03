@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { Menu, X } from 'lucide-react'
-import { BarberPole } from '@/app/components/ui/barber-pole'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
 import { useSessao } from '../sessao'
 import { Button, cn } from '../ui/button'
@@ -51,7 +50,6 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               Base<span className="text-muted">Cut</span>
             </Link>
-            <BarberPole className="hidden lg:flex w-2 h-7 mx-2" />
             <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.25em] text-muted whitespace-nowrap border-l border-rule pl-4">
               {contexto}
             </span>

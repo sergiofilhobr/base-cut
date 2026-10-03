@@ -4,7 +4,6 @@ import { SignIn, SignUp } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
-import { BarberPole } from '@/app/components/ui/barber-pole'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
 import { useAparenciaClerk, useSessao } from './sessao'
 import { Button } from './ui/button'
@@ -33,10 +32,7 @@ export function Entrada({ modo }: { modo: Modo }) {
         >
           Base<span className="text-muted">Cut</span>
         </Link>
-        <div className="flex items-center gap-5">
-          <BarberPole className="hidden sm:flex w-3 h-10" />
-          <ThemeToggle />
-        </div>
+        <ThemeToggle />
       </header>
 
       <main className="flex-1 px-6 sm:px-10 py-12 sm:py-16">

@@ -54,6 +54,8 @@ N7 (slab, fio de 2px, mono tracked), mas carrega as **seções do app** de quem
 entrou: a equipe vê Hoje · Agenda · Expediente · Casa; o cliente vê
 Horários · Marcar · Ficha. Tema, nome de quem entrou e Sair ficam à direita.
 Abaixo de `sm` as seções viram um painel de disclosure sob a barra.
+**O barber pole não entra no app**: ele é marca do site; depois do login o
+header carrega só o wordmark e as seções.
 
 Os componentes do app são o daisyUI (ADR 0011) vestido com os tokens daqui:
 raio zero, sem sombra, todas as cores semânticas na tinta. `btn`, `input`,
@@ -146,9 +148,9 @@ vertical varia de propósito entre as famílias (ver *Per-page allowances*).
 - O par Archivo + Inter + JetBrains Mono.
 - A voz de CTA (retângulo sólido, mono caixa alta).
 - Nav N7 e footer Ft4 — exceto em `/links`, que declara chrome próprio.
-- O barber pole: grande no canto do main **só na home**; nas demais rotas,
-  versão mini no header ao lado do wordmark (visível a partir de `lg`) —
-  exceto em `/links`, que não tem header (ver a seção da rota).
+- O barber pole: grande no canto do main **só na home**; nas demais rotas do
+  site, versão mini no header ao lado do wordmark (visível a partir de `lg`) —
+  exceto em `/links`, que não tem header, e em `/app`, que não o carrega.
 - Altura mínima de viewport: o `main` sempre preenche o espaço entre nav e footer.
 
 ## What pages MAY differ on
