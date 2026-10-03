@@ -5,6 +5,8 @@ import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alt
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
+import type { RepositorioCasa } from "../persistencia/casa-postgres.ts";
+import { cabeNaLista, servicosVisiveis, valorDoRepasse } from "../../domain/casa/regras.ts";
 import { avaliacaoNova, caminhoDoGoogle } from "../../application/avaliar.ts";
 import { comprovante, fecharAtendimento } from "../../application/fechar-atendimento.ts";
 import { aplicarCupom, podeReceberCampanha, pontosDaVisita, proximaRecorrencia, relatorioCsv, resumirRelatorio } from "../../domain/relacao/regras.ts";
@@ -43,6 +45,7 @@ export function criarAplicacao(deps: {
   cobrancas: Cobrancas;
   relacao: RepositorioRelacao;
   urlGoogle: string;
+  casa: RepositorioCasa;
 }) {
   const app = new Hono();
 
@@ -82,8 +85,12 @@ export function criarAplicacao(deps: {
 
   app.get("/api/servicos", async (c) => {
     const lista = await deps.agenda.listarServicosAtivos();
+    const barbeiroId = c.req.query("barbeiroId");
+    const visiveis = barbeiroId
+      ? servicosVisiveis(lista, await deps.casa.servicosDoBarbeiro(barbeiroId))
+      : lista;
     return c.json({
-      servicos: lista.map((servico) => ({
+      servicos: visiveis.map((servico) => ({
         id: servico.id,
         nome: servico.nome,
         duracaoMinutos: servico.duracaoMinutos,
@@ -283,7 +290,11 @@ export function criarAplicacao(deps: {
     const corpo = await c.req.json().catch(() => null);
     const faixas = lerFaixas(corpo);
     if (!faixas) return c.json({ erro: "pedido_invalido" }, 400);
-    const barbeiro = await deps.agenda.barbeiroAtivo();
+    const pedidoId =
+      corpo && typeof corpo === "object" && typeof (corpo as { barbeiroId?: unknown }).barbeiroId === "string"
+        ? (corpo as { barbeiroId: string }).barbeiroId
+        : null;
+    const barbeiro = pedidoId ? await deps.agenda.barbeiroPorId(pedidoId) : await deps.agenda.barbeiroAtivo();
     if (!barbeiro) return c.json({ erro: "sem_barbeiro" }, 422);
     await deps.agenda.substituirExpediente(barbeiro.id, faixas);
     return c.json({ ok: true });
@@ -294,7 +305,8 @@ export function criarAplicacao(deps: {
     const de = dataDe(c.req.query("de"));
     const ate = dataDe(c.req.query("ate"));
     if (!de || !ate) return c.json({ erro: "pedido_invalido" }, 400);
-    const barbeiro = await deps.agenda.barbeiroAtivo();
+    const pedidoId = c.req.query("barbeiroId");
+    const barbeiro = pedidoId ? await deps.agenda.barbeiroPorId(pedidoId) : await deps.agenda.barbeiroAtivo();
     if (!barbeiro) return c.json({ erro: "sem_barbeiro" }, 422);
     const [agendamentosDaCasa, bloqueios] = await Promise.all([
       deps.agenda.listarAgenda(barbeiro.id, de, ate),
@@ -672,6 +684,127 @@ export function criarAplicacao(deps: {
     return c.json({ id: gravado.id }, 201);
   });
 
+  app.post("/api/painel/barbeiros", async (c) => {
+    if (!(await admin(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { nome?: unknown }).nome !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const nome = (corpo as { nome: string }).nome.trim();
+    if (!nome) return c.json({ erro: "pedido_invalido" }, 400);
+    return c.json(await deps.casa.criarBarbeiro(nome), 201);
+  });
+
+  app.put("/api/painel/barbeiros/:id/servicos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || !Array.isArray((corpo as { servicoIds?: unknown }).servicoIds)) {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const servicoIds = (corpo as { servicoIds: unknown[] }).servicoIds;
+    if (servicoIds.some((id) => typeof id !== "string")) return c.json({ erro: "pedido_invalido" }, 400);
+    await deps.casa.ligarServicos(c.req.param("id"), servicoIds as string[]);
+    return c.json({ ok: true });
+  });
+
+  app.put("/api/painel/barbeiros/:id/comissao", async (c) => {
+    if (!(await admin(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { percentual?: unknown }).percentual !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const percentual = (corpo as { percentual: number }).percentual;
+    const conta = valorDoRepasse(0, percentual);
+    if (!conta.ok) return c.json({ erro: conta.erro }, 422);
+    await deps.casa.definirComissao(c.req.param("id"), percentual);
+    return c.json({ ok: true });
+  });
+
+  app.get("/api/painel/repasse.csv", async (c) => {
+    if (!(await admin(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const de = dataDe(c.req.query("de"));
+    const ate = dataDe(c.req.query("ate"));
+    if (!de || !ate) return c.json({ erro: "pedido_invalido" }, 400);
+    const linhas = await deps.casa.faturamento(de, ate);
+    const csv = [
+      "barbeiro,faturado_centavos,percentual,repasse_centavos",
+      ...linhas.map((linha) => {
+        const repasse = valorDoRepasse(Number(linha.faturadoCentavos), Number(linha.percentual));
+        const centavos = repasse.ok ? repasse.centavos : 0;
+        return `${linha.nome},${linha.faturadoCentavos},${linha.percentual},${centavos}`;
+      }),
+    ].join("\n");
+    return c.text(csv);
+  });
+
+  app.get("/api/run", async (c) => {
+    const lista = await deps.casa.eventos();
+    return c.json({
+      eventos: lista.map((evento) => ({
+        id: evento.id,
+        nome: evento.nome,
+        inicio: new Date(evento.inicio).toISOString(),
+        vagas: evento.vagas,
+      })),
+    });
+  });
+
+  app.post("/api/painel/run", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.nome !== "string" || typeof dados.inicio !== "string" || typeof dados.vagas !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const inicio = new Date(dados.inicio);
+    if (Number.isNaN(inicio.getTime()) || dados.vagas < 1) return c.json({ erro: "pedido_invalido" }, 400);
+    return c.json(await deps.casa.criarEvento({ nome: dados.nome.trim(), inicio, vagas: dados.vagas }), 201);
+  });
+
+  app.post("/api/run/:id/inscrever", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const telefone = telefoneDoCorpo(corpo);
+    if (!telefone) return c.json({ erro: "pedido_invalido" }, 400);
+    const cliente = await deps.agenda.clientePorTelefone(telefone);
+    if (!cliente) return c.json({ erro: "ficha_inexistente" }, 422);
+    const vaga = await deps.casa.vagasDoEvento(c.req.param("id"));
+    if (!vaga) return c.json({ erro: "nao_encontrado" }, 404);
+    if (!cabeNaLista(Number(vaga.inscritos), Number(vaga.vagas))) return c.json({ erro: "lista_cheia" }, 409);
+    try {
+      const inscricao = await deps.casa.inscrever(c.req.param("id"), cliente.id);
+      return c.json(inscricao, 201);
+    } catch {
+      return c.json({ erro: "ja_inscrito" }, 409);
+    }
+  });
+
+  app.post("/api/painel/run/:id/checkin", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { clienteId?: unknown }).clienteId !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const clienteId = (corpo as { clienteId: string }).clienteId;
+    await deps.casa.marcarPresenca(c.req.param("id"), clienteId);
+    await deps.casa.marcarRunClub(clienteId);
+    return c.json({ runClub: true });
+  });
+
+  app.get("/api/galeria", async (c) => {
+    return c.json({ fotos: await deps.casa.fotosPublicadas() });
+  });
+
+  app.post("/api/painel/galeria", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.src !== "string" || typeof dados.alt !== "string") return c.json({ erro: "pedido_invalido" }, 400);
+    const servicoId = typeof dados.servicoId === "string" && dados.servicoId !== "" ? dados.servicoId : null;
+    return c.json(await deps.casa.publicarFoto({ src: dados.src, alt: dados.alt, servicoId }), 201);
+  });
+
   app.delete("/api/painel/bloqueios/:id", async (c) => {
     if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
     await deps.agenda.removerBloqueio(c.req.param("id"));
@@ -679,6 +812,15 @@ export function criarAplicacao(deps: {
   });
 
   return app;
+}
+
+async function admin(
+  c: { req: { header: (nome: string) => string | undefined } },
+  deps: { autenticacao: Autenticacao },
+) {
+  const atual = await membro(c, deps);
+  if (!atual || atual.papel !== "admin") return null;
+  return atual;
 }
 
 async function membro(

@@ -36,12 +36,15 @@ function Agenda() {
   const [bloqueios, setBloqueios] = useState<Bloqueio[]>([])
   const [servicos, setServicos] = useState<Servico[]>([])
   const [aviso, setAviso] = useState<string | null>(null)
+  const [barbeiroId, setBarbeiroId] = useState('')
+  const [barbeiros, setBarbeiros] = useState<Array<{ id: string; nome: string }>>([])
 
   const carregar = useCallback(async () => {
     const token = await getToken()
     if (!token) return
     const { de, ate } = intervalo(dia, modo)
-    const resposta = await fetch(`/api/painel/agenda?de=${encodeURIComponent(de)}&ate=${encodeURIComponent(ate)}`, {
+    const filtro = barbeiroId ? `&barbeiroId=${encodeURIComponent(barbeiroId)}` : ''
+    const resposta = await fetch(`/api/painel/agenda?de=${encodeURIComponent(de)}&ate=${encodeURIComponent(ate)}${filtro}`, {
       headers: { authorization: `Bearer ${token}` },
     })
     if (!resposta.ok) {
@@ -52,7 +55,7 @@ function Agenda() {
     setLinhas(dados.agendamentos)
     setBloqueios(dados.bloqueios)
     setAviso(null)
-  }, [dia, getToken, modo])
+  }, [barbeiroId, dia, getToken, modo])
 
   useEffect(() => {
     if (isSignedIn) void carregar()
@@ -89,6 +92,10 @@ function Agenda() {
       .then((resposta) => resposta.json())
       .then((dados: { servicos: Servico[] }) => setServicos(dados.servicos))
       .catch(() => setServicos([]))
+    fetch('/api/barbeiros')
+      .then((resposta) => (resposta.ok ? resposta.json() : { barbeiros: [] }))
+      .then((dados: { barbeiros: Array<{ id: string; nome: string }> }) => setBarbeiros(dados.barbeiros))
+      .catch(() => setBarbeiros([]))
   }, [])
 
   if (!isLoaded) return <p className="mt-8 text-sm text-muted">Abrindo.</p>
@@ -116,6 +123,23 @@ function Agenda() {
           Avisos
         </Button>
       </div>
+      {barbeiros.length > 1 && (
+        <label className="mt-4 block text-sm text-muted">
+          Profissional
+          <select
+            value={barbeiroId}
+            onChange={(evento) => setBarbeiroId(evento.target.value)}
+            className="mt-1 block w-full border-b border-ink bg-transparent py-2 text-ink"
+          >
+            <option value="">Primeiro da casa</option>
+            {barbeiros.map((barbeiro) => (
+              <option key={barbeiro.id} value={barbeiro.id}>
+                {barbeiro.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="mt-4 block text-sm text-muted">
         Dia
         <input
@@ -148,6 +172,7 @@ function Agenda() {
       <BloqueioForm token={getToken} aoMudar={carregar} />
       <Expediente token={getToken} />
       <Relacao token={getToken} />
+      <CasaMaior token={getToken} barbeiros={barbeiros} servicos={servicos} />
       <CorteBooksy token={getToken} />
     </div>
   )
@@ -386,6 +411,119 @@ function intervalo(dia: string, modo: 'dia' | 'semana') {
   const segunda = somarDias(dia, 1 - iso)
   const de = new Date(`${segunda}T00:00:00-03:00`)
   return { de: de.toISOString(), ate: new Date(de.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+}
+
+function CasaMaior({
+  token,
+  barbeiros,
+  servicos,
+}: {
+  token: () => Promise<string | null>
+  barbeiros: Array<{ id: string; nome: string }>
+  servicos: Servico[]
+}) {
+  const [nome, setNome] = useState('')
+  const [barbeiroId, setBarbeiroId] = useState(barbeiros[0]?.id ?? '')
+  const [percentual, setPercentual] = useState('40')
+  const [evento, setEvento] = useState('')
+  const [vagas, setVagas] = useState('12')
+  const [src, setSrc] = useState('')
+  const [alt, setAlt] = useState('')
+  const [servicoId, setServicoId] = useState('')
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  return (
+    <div className="mt-10 flex flex-col gap-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Casa</p>
+      <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do barbeiro" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await token()
+          if (!autorizacao || !nome.trim()) return
+          const resposta = await fetch('/api/painel/barbeiros', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+            body: JSON.stringify({ nome: nome.trim() }),
+          })
+          setAviso(resposta.ok ? 'Barbeiro na casa. Só o admin grava.' : 'Não entrou. A conta precisa ser admin.')
+        }}
+      >
+        Incluir barbeiro
+      </Button>
+      <select value={barbeiroId} onChange={(e) => setBarbeiroId(e.target.value)} className="border-b border-ink bg-transparent py-2 text-ink">
+        <option value="">Profissional</option>
+        {barbeiros.map((barbeiro) => (
+          <option key={barbeiro.id} value={barbeiro.id}>{barbeiro.nome}</option>
+        ))}
+      </select>
+      <input value={percentual} onChange={(e) => setPercentual(e.target.value)} inputMode="numeric" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await token()
+          if (!autorizacao || !barbeiroId) return
+          const resposta = await fetch(`/api/painel/barbeiros/${barbeiroId}/comissao`, {
+            method: 'PUT',
+            headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+            body: JSON.stringify({ percentual: Number(percentual) }),
+          })
+          setAviso(resposta.ok ? 'Comissão gravada.' : 'A comissão ficou com o admin.')
+        }}
+      >
+        Gravar comissão
+      </Button>
+      <input value={evento} onChange={(e) => setEvento(e.target.value)} placeholder="Run Club" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <input value={vagas} onChange={(e) => setVagas(e.target.value)} inputMode="numeric" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await token()
+          if (!autorizacao || !evento.trim()) return
+          const resposta = await fetch('/api/painel/run', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+            body: JSON.stringify({
+              nome: evento.trim(),
+              inicio: new Date().toISOString(),
+              vagas: Number(vagas),
+            }),
+          })
+          setAviso(resposta.ok ? 'Corrida aberta.' : 'A corrida não abriu.')
+        }}
+      >
+        Abrir corrida
+      </Button>
+      <input value={src} onChange={(e) => setSrc(e.target.value)} placeholder="Caminho da foto" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Legenda" className="border-b border-ink bg-transparent py-2 text-ink" />
+      <select value={servicoId} onChange={(e) => setServicoId(e.target.value)} className="border-b border-ink bg-transparent py-2 text-ink">
+        <option value="">Serviço da foto</option>
+        {servicos.map((servico) => (
+          <option key={servico.id} value={servico.id}>{servico.nome}</option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await token()
+          if (!autorizacao || !src.trim() || !alt.trim()) return
+          const resposta = await fetch('/api/painel/galeria', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+            body: JSON.stringify({ src: src.trim(), alt: alt.trim(), servicoId }),
+          })
+          setAviso(resposta.ok ? 'Foto na galeria.' : 'A foto não entrou.')
+        }}
+      >
+        Publicar foto
+      </Button>
+      {aviso && <p className="text-sm text-muted">{aviso}</p>}
+    </div>
+  )
 }
 
 function Relacao({ token }: { token: () => Promise<string | null> }) {
