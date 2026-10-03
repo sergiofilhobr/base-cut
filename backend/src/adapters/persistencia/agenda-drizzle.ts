@@ -88,6 +88,19 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
       return linha ? paraCliente(linha) : null;
     },
 
+    async clientePorClerk(clerkUserId) {
+      const [linha] = await db
+        .select()
+        .from(clientes)
+        .where(eq(clientes.clerkUserId, clerkUserId))
+        .limit(1);
+      return linha ? paraCliente(linha) : null;
+    },
+
+    async vincularClerk(clienteId, clerkUserId) {
+      await db.update(clientes).set({ clerkUserId }).where(eq(clientes.id, clienteId));
+    },
+
     async expediente(barbeiroId, diaSemana) {
       const linhas = await db
         .select({ inicio: expedientes.inicio, fim: expedientes.fim })
@@ -291,6 +304,7 @@ function paraCliente(linha: typeof clientes.$inferSelect): Cliente {
     nome: linha.nome,
     telefone: linha.telefone,
     email: linha.email,
+    clerkUserId: linha.clerkUserId,
   };
 }
 
