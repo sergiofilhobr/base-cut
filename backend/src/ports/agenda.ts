@@ -14,6 +14,7 @@ export type Cliente = {
   nome: string;
   telefone: string;
   email: string | null;
+  clerkUserId: string | null;
 };
 
 export type Barbeiro = { id: string; nome: string };
@@ -67,6 +68,8 @@ export interface RepositorioAgenda {
   servicosPorIds(ids: string[]): Promise<Servico[]>;
   clientePorTelefone(telefone: string): Promise<Cliente | null>;
   clientePorEmail(email: string): Promise<Cliente | null>;
+  clientePorClerk(clerkUserId: string): Promise<Cliente | null>;
+  vincularClerk(clienteId: string, clerkUserId: string): Promise<void>;
   expediente(barbeiroId: string, diaSemana: number): Promise<Faixa[]>;
   ocupados(
     barbeiroId: string,

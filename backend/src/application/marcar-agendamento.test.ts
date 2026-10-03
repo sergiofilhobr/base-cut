@@ -53,6 +53,10 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
     async clientePorEmail(email) {
       return clientes.find((cliente) => cliente.email === email) ?? null;
     },
+    async clientePorClerk() {
+      return null;
+    },
+    async vincularClerk() {},
     async expediente() {
       return faixas;
     },
@@ -86,7 +90,7 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
 test("grava no telefone que já existe e não troca o e-mail", async () => {
   const agenda = agendaFalsa({
     clientes: [
-      { id: "joao", nome: "João", telefone: "47999999999", email: "joao@email.com" },
+      { id: "joao", nome: "João", telefone: "47999999999", email: "joao@email.com", clerkUserId: null },
     ],
   });
 
@@ -106,7 +110,7 @@ test("grava no telefone que já existe e não troca o e-mail", async () => {
 test("recusa e-mail que já é de outro telefone", async () => {
   const agenda = agendaFalsa({
     clientes: [
-      { id: "joao", nome: "João", telefone: "47999999999", email: "joao@email.com" },
+      { id: "joao", nome: "João", telefone: "47999999999", email: "joao@email.com", clerkUserId: null },
     ],
   });
 

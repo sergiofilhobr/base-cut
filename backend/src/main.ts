@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { serve } from "@hono/node-server";
+import { criarAutenticacaoClerk } from "./adapters/auth/clerk.ts";
 import { relogioDoSistema } from "./adapters/relogio/relogio-do-sistema.ts";
 import { criarAplicacao, semearAgenda } from "./adapters/http/app.ts";
 import { criarBanco } from "./adapters/persistencia/banco-drizzle.ts";
@@ -23,7 +24,10 @@ const app = criarAplicacao({
   banco,
   relogio: relogioDoSistema,
   agenda: banco.agenda,
-  equipeToken: process.env.EQUIPE_TOKEN,
+  autenticacao: criarAutenticacaoClerk({
+    secretKey: process.env.CLERK_SECRET_KEY,
+    orgId: process.env.CLERK_ORG_ID,
+  }),
 });
 
 serve({ fetch: app.fetch, port: porta }, () => {

@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { CATALOGO_INICIAL, EXPEDIENTE_INICIAL } from "../../application/catalogo-inicial.ts";
 import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alterar-agendamento.ts";
+import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
 import { verificarSaude } from "../../application/verificar-saude.ts";
 import { normalizarEmail, normalizarTelefone } from "../../domain/cliente/identidade.ts";
 import { podeCancelarPeloCliente } from "../../domain/agenda/regras.ts";
+import type { Autenticacao } from "../../ports/autenticacao.ts";
 import type { AgendamentoDetalhe, RepositorioAgenda } from "../../ports/agenda.ts";
 import type { Banco } from "../../ports/banco.ts";
 import type { Relogio } from "../../ports/relogio.ts";
@@ -18,7 +20,7 @@ export function criarAplicacao(deps: {
   banco: Banco;
   relogio: Relogio;
   agenda: RepositorioAgenda;
-  equipeToken: string | undefined;
+  autenticacao: Autenticacao;
 }) {
   const app = new Hono();
 
@@ -147,11 +149,24 @@ export function criarAplicacao(deps: {
     });
   });
 
+  app.post("/api/conta/entrar", async (c) => {
+    const sessao = await deps.autenticacao.cliente(c.req.header("authorization"));
+    if (!sessao) return c.json({ erro: "nao_autorizado" }, 401);
+    const resultado = await entrarNaFicha(deps.agenda, {
+      clerkUserId: sessao.userId,
+      email: sessao.email,
+    });
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, 404);
+    const ficha = await deps.agenda.clientePorClerk(sessao.userId);
+    return c.json({
+      clienteId: resultado.clienteId,
+      nome: ficha?.nome ?? null,
+    });
+  });
+
   app.put("/api/expediente", async (c) => {
-    if (!deps.equipeToken) return c.json({ erro: "equipe_nao_configurada" }, 503);
-    if (c.req.header("authorization") !== `Bearer ${deps.equipeToken}`) {
-      return c.json({ erro: "nao_autorizado" }, 401);
-    }
+    const membro = await deps.autenticacao.membro(c.req.header("authorization"));
+    if (!membro) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
     const faixas = lerFaixas(corpo);
     if (!faixas) return c.json({ erro: "pedido_invalido" }, 400);
