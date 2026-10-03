@@ -107,7 +107,7 @@ jobs:
           set -euo pipefail
           if [ -z "${VERCEL_TOKEN}" ] || [ -z "${VERCEL_ORG_ID}" ] || [ -z "${VERCEL_PROJECT_ID}" ]; then
             echo "Deploy adiado: faltam VERCEL_TOKEN, VERCEL_ORG_ID e VERCEL_PROJECT_ID nos segredos do repositório."
-            echo "main publica em produção. develop publica um preview."
+            echo "main publica em basecut.com.br. develop publica só em base-cut-navy.vercel.app."
             exit 0
           fi
           root="."
@@ -118,9 +118,16 @@ jobs:
           if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
             vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd "$root"
             vercel build --prod --token="$VERCEL_TOKEN" --cwd "$root"
-            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --cwd "$root"
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --cwd "$root" --archive=tgz --yes
           else
-            vercel pull --yes --environment=preview --token="$VERCEL_TOKEN" --cwd "$root"
-            vercel build --token="$VERCEL_TOKEN" --cwd "$root"
-            vercel deploy --prebuilt --token="$VERCEL_TOKEN" --cwd "$root"
+            # develop atualiza só base-cut-navy.vercel.app.
+            # --skip-domain impede de levar basecut.com.br junto.
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd "$root"
+            vercel build --prod --token="$VERCEL_TOKEN" --cwd "$root"
+            deployment=$(vercel deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN" --cwd "$root" --archive=tgz --yes | tail -n 1)
+            echo "Deployment: ${deployment}"
+            host=${deployment#https://}
+            host=${host#http://}
+            host=${host%%/*}
+            vercel alias set "$host" base-cut-navy.vercel.app --token="$VERCEL_TOKEN" --cwd "$root" --yes
           fi
