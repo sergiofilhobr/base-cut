@@ -1,0 +1,133 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: basecut
+          POSTGRES_PASSWORD: basecut
+          POSTGRES_DB: basecut
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U basecut -d basecut"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Testar e subir a API
+        run: |
+          set -euo pipefail
+          if [ ! -f backend/package.json ]; then
+            echo "Esta branch ainda não tem backend/."
+            exit 0
+          fi
+          cd backend
+          npm ci
+          npx tsc --noEmit
+          npm test
+          if [ -f Dockerfile ]; then
+            docker build -t basecut-api .
+          fi
+          DATABASE_URL=postgres://basecut:basecut@localhost:5432/basecut PORT=4000 \
+            npx tsx src/main.ts > /tmp/api.log 2>&1 &
+          pid=$!
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:4000/api/health; then
+              echo
+              kill "$pid" || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/api.log
+          exit 1
+
+  site:
+    name: Site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build do site
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          set -euo pipefail
+          if [ -f frontend/package.json ]; then
+            cd frontend
+          fi
+          npm ci
+          npm run build
+
+  deploy:
+    name: Deploy
+    needs: [api, site]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Publicar o site na Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN}" ] || [ -z "${VERCEL_ORG_ID}" ] || [ -z "${VERCEL_PROJECT_ID}" ]; then
+            echo "Deploy adiado: faltam VERCEL_TOKEN, VERCEL_ORG_ID e VERCEL_PROJECT_ID nos segredos do repositório."
+            echo "main publica em basecut.com.br. develop publica só em base-cut-navy.vercel.app."
+            exit 0
+          fi
+          root="."
+          if [ -f frontend/package.json ]; then
+            root="frontend"
+          fi
+          npm install -g vercel
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd "$root"
+            vercel build --prod --token="$VERCEL_TOKEN" --cwd "$root"
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --cwd "$root" --archive=tgz --yes
+          else
+            # develop atualiza só base-cut-navy.vercel.app.
+            # --skip-domain impede de levar basecut.com.br junto.
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd "$root"
+            vercel build --prod --token="$VERCEL_TOKEN" --cwd "$root"
+            deployment=$(vercel deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN" --cwd "$root" --archive=tgz --yes | tail -n 1)
+            echo "Deployment: ${deployment}"
+            host=${deployment#https://}
+            host=${host#http://}
+            host=${host%%/*}
+            vercel alias set "$host" base-cut-navy.vercel.app --token="$VERCEL_TOKEN" --cwd "$root" --yes
+          fi
