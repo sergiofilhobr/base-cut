@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { CATALOGO_INICIAL } from "../../application/catalogo-inicial.ts";
+import { CATALOGO_INICIAL, EXPEDIENTE_INICIAL } from "../../application/catalogo-inicial.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
 import { verificarSaude } from "../../application/verificar-saude.ts";
@@ -20,10 +20,15 @@ export function criarAplicacao(deps: {
 }) {
   const app = new Hono();
 
+  const origens = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
+    .split(",")
+    .map((origem) => origem.trim())
+    .filter(Boolean);
+
   app.use(
     "/api/*",
     cors({
-      origin: ["http://localhost:3000"],
+      origin: origens,
     }),
   );
 
@@ -34,6 +39,13 @@ export function criarAplicacao(deps: {
     } catch {
       return c.json({ ok: false }, 503);
     }
+  });
+
+  app.get("/api/barbeiros", async (c) => {
+    const lista = await deps.agenda.listarBarbeirosAtivos();
+    return c.json({
+      barbeiros: lista.map((barbeiro) => ({ id: barbeiro.id, nome: barbeiro.nome })),
+    });
   });
 
   app.get("/api/servicos", async (c) => {
@@ -51,10 +63,15 @@ export function criarAplicacao(deps: {
   app.get("/api/horarios", async (c) => {
     const dia = c.req.query("dia") ?? "";
     const servicoIds = (c.req.query("servicoIds") ?? "").split(",").filter(Boolean);
+    const barbeiroId = c.req.query("barbeiroId") || undefined;
     if (!DIA.test(dia) || servicoIds.length === 0) {
       return c.json({ erro: "pedido_invalido" }, 400);
     }
-    const resultado = await listarHorarios(deps.agenda, deps.relogio, { dia, servicoIds });
+    const resultado = await listarHorarios(deps.agenda, deps.relogio, {
+      dia,
+      servicoIds,
+      barbeiroId,
+    });
     if (!resultado.ok) return c.json({ erro: resultado.erro }, 422);
     return c.json({
       dia,
@@ -71,6 +88,7 @@ export function criarAplicacao(deps: {
     const resultado = await marcarAgendamento(deps.agenda, deps.relogio, {
       ...pedido,
       origem: "site",
+      barbeiroId: pedido.barbeiroId,
     });
     if (!resultado.ok) {
       const status = resultado.erro === "horario_indisponivel" || resultado.erro === "email_de_outra_ficha" ? 409 : 422;
@@ -105,7 +123,11 @@ export function criarAplicacao(deps: {
 }
 
 export async function semearAgenda(agenda: RepositorioAgenda) {
-  await agenda.semearSeVazio({ barbeiro: "Bruno", servicos: CATALOGO_INICIAL });
+  await agenda.semearSeVazio({
+    barbeiro: "Bruno",
+    servicos: CATALOGO_INICIAL,
+    expediente: EXPEDIENTE_INICIAL,
+  });
 }
 
 function lerPedido(corpo: unknown) {
@@ -116,6 +138,7 @@ function lerPedido(corpo: unknown) {
   }
   if (typeof dados.inicio !== "string" || typeof dados.nome !== "string") return null;
   if (typeof dados.telefone !== "string" || typeof dados.email !== "string") return null;
+  if (dados.barbeiroId !== undefined && typeof dados.barbeiroId !== "string") return null;
   const telefone = normalizarTelefone(dados.telefone);
   const email = normalizarEmail(dados.email);
   const inicio = new Date(dados.inicio);
@@ -127,6 +150,7 @@ function lerPedido(corpo: unknown) {
     nome: dados.nome.trim(),
     telefone,
     email,
+    barbeiroId: typeof dados.barbeiroId === "string" ? dados.barbeiroId : undefined,
   };
 }
 

@@ -42,6 +42,8 @@ export type AgendamentoGravado = {
 
 export interface RepositorioAgenda {
   barbeiroAtivo(): Promise<Barbeiro | null>;
+  barbeiroPorId(id: string): Promise<Barbeiro | null>;
+  listarBarbeirosAtivos(): Promise<Barbeiro[]>;
   listarServicosAtivos(): Promise<Servico[]>;
   servicosPorIds(ids: string[]): Promise<Servico[]>;
   clientePorTelefone(telefone: string): Promise<Cliente | null>;
@@ -57,5 +59,6 @@ export interface RepositorioAgenda {
   semearSeVazio(dados: {
     barbeiro: string;
     servicos: Array<{ nome: string; duracaoMinutos: number; precoCentavos: number }>;
+    expediente: Array<{ diaSemana: number; inicio: string; fim: string }>;
   }): Promise<void>;
 }

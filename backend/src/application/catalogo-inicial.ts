@@ -1,3 +1,10 @@
+/** Terça a sábado. O Bruno troca isso no painel. */
+export const EXPEDIENTE_INICIAL = [2, 3, 4, 5, 6].map((diaSemana) => ({
+  diaSemana,
+  inicio: "09:00",
+  fim: diaSemana === 6 ? "17:00" : "19:00",
+}));
+
 export const CATALOGO_INICIAL = [
   { nome: "CORTE", duracaoMinutos: 45, precoCentavos: 5000 },
   { nome: "CABELO + SOBRANCELHA", duracaoMinutos: 45, precoCentavos: 6000 },

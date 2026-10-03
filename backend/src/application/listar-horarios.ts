@@ -9,12 +9,14 @@ import type { RepositorioAgenda } from "../ports/agenda.ts";
 export async function listarHorarios(
   agenda: RepositorioAgenda,
   relogio: Relogio,
-  pedido: { dia: string; servicoIds: string[] },
+  pedido: { dia: string; servicoIds: string[]; barbeiroId?: string },
 ): Promise<
   | { ok: true; duracaoMinutos: number; horarios: Date[] }
   | { ok: false; erro: "sem_barbeiro" | "servico_indisponivel" }
 > {
-  const barbeiro = await agenda.barbeiroAtivo();
+  const barbeiro = pedido.barbeiroId
+    ? await agenda.barbeiroPorId(pedido.barbeiroId)
+    : await agenda.barbeiroAtivo();
   if (!barbeiro) return { ok: false, erro: "sem_barbeiro" };
 
   const unicos = [...new Set(pedido.servicoIds)];

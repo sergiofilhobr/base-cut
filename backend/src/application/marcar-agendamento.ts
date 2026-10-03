@@ -20,6 +20,7 @@ export type PedidoDeAgendamento = {
   telefone: string;
   email: string;
   origem: "site" | "equipe";
+  barbeiroId?: string;
 };
 
 export async function marcarAgendamento(
@@ -27,7 +28,9 @@ export async function marcarAgendamento(
   relogio: Relogio,
   pedido: PedidoDeAgendamento,
 ): Promise<{ ok: true; agendamento: AgendamentoGravado } | { ok: false; erro: FalhaAoMarcar }> {
-  const barbeiro = await agenda.barbeiroAtivo();
+  const barbeiro = pedido.barbeiroId
+    ? await agenda.barbeiroPorId(pedido.barbeiroId)
+    : await agenda.barbeiroAtivo();
   if (!barbeiro) return { ok: false, erro: "sem_barbeiro" };
 
   const unicos = [...new Set(pedido.servicoIds)];

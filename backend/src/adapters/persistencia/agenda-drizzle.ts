@@ -36,6 +36,23 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
       return barbeiro ?? null;
     },
 
+    async barbeiroPorId(id) {
+      const [barbeiro] = await db
+        .select({ id: barbeiros.id, nome: barbeiros.nome })
+        .from(barbeiros)
+        .where(and(eq(barbeiros.id, id), eq(barbeiros.ativo, true)))
+        .limit(1);
+      return barbeiro ?? null;
+    },
+
+    async listarBarbeirosAtivos() {
+      return db
+        .select({ id: barbeiros.id, nome: barbeiros.nome })
+        .from(barbeiros)
+        .where(eq(barbeiros.ativo, true))
+        .orderBy(asc(barbeiros.nome));
+    },
+
     async listarServicosAtivos() {
       const linhas = await db
         .select()
@@ -160,10 +177,16 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
     },
 
     async semearSeVazio(dados) {
-      const [barbeiro] = await db.select({ id: barbeiros.id }).from(barbeiros).limit(1);
-      if (!barbeiro) {
-        await db.insert(barbeiros).values({ nome: dados.barbeiro, ativo: true });
-      }
+      const [barbeiroExistente] = await db.select({ id: barbeiros.id }).from(barbeiros).limit(1);
+      const barbeiroId = barbeiroExistente
+        ? barbeiroExistente.id
+        : (
+            await db
+              .insert(barbeiros)
+              .values({ nome: dados.barbeiro, ativo: true })
+              .returning({ id: barbeiros.id })
+          )[0].id;
+
       const [servico] = await db.select({ id: servicos.id }).from(servicos).limit(1);
       if (!servico && dados.servicos.length > 0) {
         await db.insert(servicos).values(
@@ -172,6 +195,18 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
             duracaoMinutos: item.duracaoMinutos,
             precoCentavos: item.precoCentavos,
             ativo: true,
+          })),
+        );
+      }
+
+      const [faixa] = await db.select({ id: expedientes.id }).from(expedientes).limit(1);
+      if (!faixa && dados.expediente.length > 0) {
+        await db.insert(expedientes).values(
+          dados.expediente.map((item) => ({
+            barbeiroId,
+            diaSemana: item.diaSemana,
+            inicio: item.inicio,
+            fim: item.fim,
           })),
         );
       }
