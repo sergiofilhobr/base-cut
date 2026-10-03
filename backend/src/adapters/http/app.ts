@@ -5,6 +5,8 @@ import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alt
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
+import { comprovante, fecharAtendimento } from "../../application/fechar-atendimento.ts";
+import { cobrarSinal } from "../../application/cobrar-sinal.ts";
 import { importarBooksy } from "../../application/importar-booksy.ts";
 import { excluirFicha, exportarFicha } from "../../application/lgpd.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
@@ -14,6 +16,7 @@ import { verificarSaude } from "../../application/verificar-saude.ts";
 import { normalizarEmail, normalizarTelefone } from "../../domain/cliente/identidade.ts";
 import { podeCancelarPeloCliente } from "../../domain/agenda/regras.ts";
 import type { Autenticacao } from "../../ports/autenticacao.ts";
+import type { Cobrancas, RepositorioCaixa } from "../../ports/caixa.ts";
 import type { Interpretador } from "../../ports/interpretador.ts";
 import type { Mensageiro, RepositorioMensagens } from "../../ports/mensagens.ts";
 import type { AgendamentoDetalhe, Bloqueio, LinhaDaAgenda, RepositorioAgenda } from "../../ports/agenda.ts";
@@ -33,6 +36,8 @@ export function criarAplicacao(deps: {
   interpretador: Interpretador;
   telefoneDoBruno: string | undefined;
   urlDoSite: string;
+  caixa: RepositorioCaixa;
+  cobrancas: Cobrancas;
 }) {
   const app = new Hono();
 
@@ -411,6 +416,87 @@ export function criarAplicacao(deps: {
     return c.json(resultado);
   });
 
+  app.post("/api/painel/atendimentos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    const pedido = lerFechamento(corpo);
+    if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await fecharAtendimento(deps.caixa, pedido);
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, 422);
+    return c.json({ id: resultado.atendimento.id, totalCentavos: resultado.atendimento.totalCentavos, comprovante: comprovante(resultado.atendimento) }, 201);
+  });
+
+  app.get("/api/atendimentos/:id/comprovante", async (c) => {
+    const atendimento = await deps.caixa.atendimento(c.req.param("id"));
+    if (!atendimento) return c.json({ erro: "nao_encontrado" }, 404);
+    return c.text(comprovante(atendimento));
+  });
+
+  app.post("/api/painel/sinais", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.agendamentoId !== "string" || typeof dados.clienteId !== "string") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    if (dados.meio !== "pix" && dados.meio !== "cartao") return c.json({ erro: "pedido_invalido" }, 400);
+    if (typeof dados.valorCentavos !== "number") return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await cobrarSinal(deps.caixa, deps.cobrancas, {
+      agendamentoId: dados.agendamentoId,
+      clienteId: dados.clienteId,
+      meio: dados.meio,
+      valorCentavos: dados.valorCentavos,
+    });
+    if (!resultado.ok) return c.json({ erro: resultado.erro }, 422);
+    return c.json(resultado, 201);
+  });
+
+  app.post("/api/painel/produtos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.nome !== "string" || typeof dados.precoCentavos !== "number" || typeof dados.estoque !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const produto = await deps.caixa.criarProduto({
+      nome: dados.nome,
+      precoCentavos: dados.precoCentavos,
+      estoque: dados.estoque,
+    });
+    return c.json(produto, 201);
+  });
+
+  app.post("/api/painel/vales", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.codigo !== "string" || typeof dados.saldoCentavos !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const clienteId = typeof dados.clienteId === "string" ? dados.clienteId : null;
+    const vale = await deps.caixa.criarVale({ codigo: dados.codigo, clienteId, saldoCentavos: dados.saldoCentavos });
+    return c.json(vale, 201);
+  });
+
+  app.post("/api/painel/planos", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
+    const dados = corpo as Record<string, unknown>;
+    if (typeof dados.clienteId !== "string" || typeof dados.nome !== "string" || typeof dados.valorCentavos !== "number") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    const plano = await deps.caixa.criarPlano({
+      clienteId: dados.clienteId,
+      nome: dados.nome,
+      valorCentavos: dados.valorCentavos,
+    });
+    return c.json(plano, 201);
+  });
+
   app.post("/api/painel/bloqueios", async (c) => {
     if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
@@ -564,6 +650,39 @@ function serializarLinha(linha: LinhaDaAgenda) {
       duracaoMinutos: item.duracaoMinutos,
     })),
   };
+}
+
+function lerFechamento(corpo: unknown) {
+  if (!corpo || typeof corpo !== "object") return null;
+  const dados = corpo as Record<string, unknown>;
+  if (typeof dados.clienteId !== "string") return null;
+  if (!Array.isArray(dados.servicos) || !Array.isArray(dados.produtos)) return null;
+  const servicos = dados.servicos.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const linha = item as Record<string, unknown>;
+    if (typeof linha.nome !== "string" || typeof linha.precoCentavos !== "number") return [];
+    return [{ tipo: "servico" as const, nome: linha.nome, quantidade: 1, precoCentavos: linha.precoCentavos }];
+  });
+  if (servicos.length !== dados.servicos.length) return null;
+  const produtos = dados.produtos.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const linha = item as Record<string, unknown>;
+    if (typeof linha.produtoId !== "string" || typeof linha.quantidade !== "number") return [];
+    return [{ produtoId: linha.produtoId, quantidade: linha.quantidade }];
+  });
+  if (produtos.length !== dados.produtos.length) return null;
+  const descontoCentavos = typeof dados.descontoCentavos === "number" ? dados.descontoCentavos : 0;
+  const gorjetaCentavos = typeof dados.gorjetaCentavos === "number" ? dados.gorjetaCentavos : 0;
+  const agendamentoId = typeof dados.agendamentoId === "string" ? dados.agendamentoId : null;
+  let pagamento: { meio: "pix" | "cartao" | "dinheiro"; valorCentavos: number } | null = null;
+  if (dados.pagamento && typeof dados.pagamento === "object") {
+    const meio = (dados.pagamento as { meio?: unknown }).meio;
+    const valor = (dados.pagamento as { valorCentavos?: unknown }).valorCentavos;
+    if ((meio === "pix" || meio === "cartao" || meio === "dinheiro") && typeof valor === "number") {
+      pagamento = { meio, valorCentavos: valor };
+    }
+  }
+  return { agendamentoId, clienteId: dados.clienteId, servicos, produtos, descontoCentavos, gorjetaCentavos, pagamento };
 }
 
 function consentiu(corpo: unknown) {

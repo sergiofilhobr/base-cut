@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { serve } from "@hono/node-server";
+import { criarCobrancas } from "./adapters/caixa/cobrancas.ts";
 import { criarAutenticacaoClerk } from "./adapters/auth/clerk.ts";
 import { criarInterpretador } from "./adapters/eve/interpretador.ts";
 import { criarMensageiroZApi } from "./adapters/whatsapp/z-api.ts";
@@ -46,6 +47,8 @@ const app = criarAplicacao({
   }),
   telefoneDoBruno: process.env.BRUNO_WHATSAPP,
   urlDoSite,
+  caixa: banco.caixa,
+  cobrancas: criarCobrancas(process.env.MERCADOPAGO_TOKEN),
 });
 
 const lembrar = () =>
