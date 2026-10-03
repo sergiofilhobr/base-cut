@@ -82,6 +82,10 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
     async buscarAgendamento() {
       return null;
     },
+    async proximoConfirmado() {
+      return null;
+    },
+    async marcarPresenca() {},
     async cancelarAgendamento() {},
     async reagendarAgendamento() {},
     async listarAgenda() {
