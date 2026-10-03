@@ -126,6 +126,9 @@ export interface RepositorioAgenda {
     Array<{ acao: string; ator: string; em: Date; agendamentoId: string | null }>
   >;
   anonimizarCliente(id: string): Promise<void>;
+  lerConfiguracao(chave: string): Promise<string | null>;
+  gravarConfiguracao(chave: string, valor: string): Promise<void>;
+  criarCliente(dados: { nome: string; telefone: string; email: string | null }): Promise<Cliente>;
   agendamentosDoCliente(
     clienteId: string,
   ): Promise<Array<{ id: string; inicio: Date; fim: Date; estado: EstadoAgendamento }>>;

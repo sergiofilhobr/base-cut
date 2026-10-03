@@ -19,6 +19,7 @@ import {
   auditoria,
   barbeiros,
   clientes,
+  configuracao,
   expedientes,
   indisponibilidades,
   itensAgendamento,
@@ -331,6 +332,30 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
         .from(auditoria)
         .where(eq(auditoria.clienteId, clienteId))
         .orderBy(asc(auditoria.em));
+    },
+
+    async lerConfiguracao(chave) {
+      const [linha] = await db
+        .select({ valor: configuracao.valor })
+        .from(configuracao)
+        .where(eq(configuracao.chave, chave))
+        .limit(1);
+      return linha?.valor ?? null;
+    },
+
+    async gravarConfiguracao(chave, valor) {
+      await db
+        .insert(configuracao)
+        .values({ chave, valor })
+        .onConflictDoUpdate({ target: configuracao.chave, set: { valor } });
+    },
+
+    async criarCliente(dados) {
+      const [criado] = await db
+        .insert(clientes)
+        .values(dados)
+        .returning();
+      return paraCliente(criado);
     },
 
     async agendamentosDoCliente(clienteId) {

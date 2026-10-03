@@ -130,6 +130,11 @@ export const mensagens = pgTable(
   ],
 );
 
+export const configuracao = pgTable("configuracao", {
+  chave: text("chave").primaryKey(),
+  valor: text("valor").notNull(),
+});
+
 export const auditoria = pgTable("auditoria", {
   id: uuid("id").primaryKey().defaultRandom(),
   agendamentoId: uuid("agendamento_id").references(() => agendamentos.id),

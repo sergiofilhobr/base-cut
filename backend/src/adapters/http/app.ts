@@ -5,6 +5,7 @@ import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alt
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
 import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
+import { importarBooksy } from "../../application/importar-booksy.ts";
 import { excluirFicha, exportarFicha } from "../../application/lgpd.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
@@ -61,6 +62,12 @@ export function criarAplicacao(deps: {
     return c.json({
       barbeiros: lista.map((barbeiro) => ({ id: barbeiro.id, nome: barbeiro.nome })),
     });
+  });
+
+  app.get("/api/casa", async (c) => {
+    const valor = await deps.agenda.lerConfiguracao("agendamento_publico");
+    const agendamento = valor === "site" ? "site" : "booksy";
+    return c.json({ agendamento });
   });
 
   app.get("/api/servicos", async (c) => {
@@ -382,6 +389,26 @@ export function criarAplicacao(deps: {
       ator: `equipe:${equipe.userId}`,
     });
     return c.json({ ok: true });
+  });
+
+  app.put("/api/painel/casa", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const corpo = await c.req.json().catch(() => null);
+    const agendamento =
+      corpo && typeof corpo === "object" ? (corpo as { agendamento?: unknown }).agendamento : null;
+    if (agendamento !== "site" && agendamento !== "booksy") {
+      return c.json({ erro: "pedido_invalido" }, 400);
+    }
+    await deps.agenda.gravarConfiguracao("agendamento_publico", agendamento);
+    return c.json({ agendamento });
+  });
+
+  app.post("/api/painel/importacao/booksy", async (c) => {
+    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    const csv = await c.req.text();
+    if (!csv.trim()) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await importarBooksy(deps.agenda, csv);
+    return c.json(resultado);
   });
 
   app.post("/api/painel/bloqueios", async (c) => {

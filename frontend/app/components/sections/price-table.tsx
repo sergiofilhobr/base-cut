@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { BOOKSY_URL } from '@/app/lib/constants'
+import { LinkAgendar } from '@/app/components/ui/link-agendar'
 import servicesData from '@/app/lib/services.json'
 import { formatarDuracao, formatarPreco, servicosDaApi } from '@/app/lib/agenda'
 
@@ -58,10 +57,7 @@ export async function PriceTable() {
         ))}
       </ul>
 
-      <Link
-        href={BOOKSY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+      <LinkAgendar
         className="
           mt-8 inline-flex items-center px-8 py-4
           font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
@@ -73,7 +69,7 @@ export async function PriceTable() {
         "
       >
         Agendar
-      </Link>
+      </LinkAgendar>
     </div>
   )
 }
