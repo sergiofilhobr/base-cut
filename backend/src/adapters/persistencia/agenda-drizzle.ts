@@ -162,6 +162,31 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
       } satisfies AgendamentoDetalhe;
     },
 
+    async proximoConfirmado(telefone, agora) {
+      const [linha] = await db
+        .select({ id: agendamentos.id })
+        .from(agendamentos)
+        .innerJoin(clientes, eq(clientes.id, agendamentos.clienteId))
+        .where(
+          and(
+            eq(clientes.telefone, telefone),
+            eq(agendamentos.estado, "confirmado"),
+            gt(agendamentos.inicio, agora),
+          ),
+        )
+        .orderBy(asc(agendamentos.inicio))
+        .limit(1);
+      if (!linha) return null;
+      return this.buscarAgendamento(linha.id);
+    },
+
+    async marcarPresenca(id, quando) {
+      await db
+        .update(agendamentos)
+        .set({ presencaAvisadaEm: quando })
+        .where(eq(agendamentos.id, id));
+    },
+
     async cancelarAgendamento(id, estado) {
       await db.update(agendamentos).set({ estado }).where(eq(agendamentos.id, id));
     },

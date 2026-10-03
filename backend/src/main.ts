@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { serve } from "@hono/node-server";
 import { criarAutenticacaoClerk } from "./adapters/auth/clerk.ts";
+import { criarInterpretador } from "./adapters/eve/interpretador.ts";
 import { criarMensageiroZApi } from "./adapters/whatsapp/z-api.ts";
 import { relogioDoSistema } from "./adapters/relogio/relogio-do-sistema.ts";
 import { dispararLembretes } from "./application/avisos-whatsapp.ts";
@@ -39,6 +40,10 @@ const app = criarAplicacao({
   }),
   mensagens: banco.mensagens,
   mensageiro,
+  interpretador: criarInterpretador({
+    url: process.env.EVE_URL,
+    token: process.env.EVE_TOKEN,
+  }),
   telefoneDoBruno: process.env.BRUNO_WHATSAPP,
   urlDoSite,
 });

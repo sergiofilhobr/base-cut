@@ -87,6 +87,8 @@ export interface RepositorioAgenda {
     excetoAgendamentoId?: string,
   ): Promise<Intervalo[]>;
   buscarAgendamento(id: string): Promise<AgendamentoDetalhe | null>;
+  proximoConfirmado(telefone: string, agora: Date): Promise<AgendamentoDetalhe | null>;
+  marcarPresenca(id: string, quando: Date): Promise<void>;
   cancelarAgendamento(
     id: string,
     estado: "cancelado_pelo_cliente" | "cancelado_pela_casa",

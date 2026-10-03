@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { CATALOGO_INICIAL, EXPEDIENTE_INICIAL } from "../../application/catalogo-inicial.ts";
 import { cancelarPeloCliente, reagendarPeloCliente } from "../../application/alterar-agendamento.ts";
 import { avisarMarcacao } from "../../application/avisos-whatsapp.ts";
+import { responderLembrete } from "../../application/responder-lembrete.ts";
 import { entrarNaFicha } from "../../application/entrar-na-ficha.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
@@ -11,6 +12,7 @@ import { verificarSaude } from "../../application/verificar-saude.ts";
 import { normalizarEmail, normalizarTelefone } from "../../domain/cliente/identidade.ts";
 import { podeCancelarPeloCliente } from "../../domain/agenda/regras.ts";
 import type { Autenticacao } from "../../ports/autenticacao.ts";
+import type { Interpretador } from "../../ports/interpretador.ts";
 import type { Mensageiro, RepositorioMensagens } from "../../ports/mensagens.ts";
 import type { AgendamentoDetalhe, Bloqueio, LinhaDaAgenda, RepositorioAgenda } from "../../ports/agenda.ts";
 import type { Banco } from "../../ports/banco.ts";
@@ -26,6 +28,7 @@ export function criarAplicacao(deps: {
   autenticacao: Autenticacao;
   mensagens: RepositorioMensagens;
   mensageiro: Mensageiro;
+  interpretador: Interpretador;
   telefoneDoBruno: string | undefined;
   urlDoSite: string;
 }) {
@@ -162,6 +165,21 @@ export function criarAplicacao(deps: {
       inicio: resultado.inicio.toISOString(),
       fim: resultado.fim.toISOString(),
     });
+  });
+
+  app.post("/api/whatsapp/entrada", async (c) => {
+    const corpo = await c.req.json().catch(() => null);
+    const mensagem = lerMensagemWhatsapp(corpo);
+    if (!mensagem) return c.json({ erro: "pedido_invalido" }, 400);
+    const resultado = await responderLembrete(
+      deps.agenda,
+      deps.mensagens,
+      deps.mensageiro,
+      deps.interpretador,
+      deps.relogio,
+      { ...mensagem, urlDoSite: deps.urlDoSite },
+    );
+    return c.json(resultado);
   });
 
   app.post("/api/conta/entrar", async (c) => {
@@ -344,6 +362,26 @@ function lerPedido(corpo: unknown) {
     email,
     barbeiroId: typeof dados.barbeiroId === "string" ? dados.barbeiroId : undefined,
   };
+}
+
+function lerMensagemWhatsapp(corpo: unknown) {
+  if (!corpo || typeof corpo !== "object") return null;
+  const dados = corpo as Record<string, unknown>;
+  const telefoneBruto =
+    typeof dados.telefone === "string"
+      ? dados.telefone
+      : typeof dados.phone === "string"
+        ? dados.phone
+        : null;
+  const textoDireto = typeof dados.texto === "string" ? dados.texto : null;
+  const textoZapi =
+    dados.text && typeof dados.text === "object" && typeof (dados.text as { message?: unknown }).message === "string"
+      ? (dados.text as { message: string }).message
+      : null;
+  const telefone = telefoneBruto ? normalizarTelefone(telefoneBruto) : null;
+  const texto = (textoDireto ?? textoZapi)?.trim();
+  if (!telefone || !texto) return null;
+  return { telefone, texto };
 }
 
 function dataDe(valor: string | undefined) {
