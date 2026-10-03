@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   diaCivil,
@@ -320,6 +321,12 @@ export function FluxoAgendar() {
           <p className="mt-6 text-sm text-ink">
             Horário confirmado. Até lá, na base.
           </p>
+          <Link
+            href={`/agendamento/${confirmado.id}`}
+            className="mt-6 inline-block font-mono text-xs uppercase tracking-[0.2em] text-ink underline"
+          >
+            Cancelar ou mudar o horário
+          </Link>
         </div>
       )}
     </div>

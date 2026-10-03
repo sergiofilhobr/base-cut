@@ -9,7 +9,7 @@ import type { RepositorioAgenda } from "../ports/agenda.ts";
 export async function listarHorarios(
   agenda: RepositorioAgenda,
   relogio: Relogio,
-  pedido: { dia: string; servicoIds: string[]; barbeiroId?: string },
+  pedido: { dia: string; servicoIds: string[]; barbeiroId?: string; excetoAgendamentoId?: string },
 ): Promise<
   | { ok: true; duracaoMinutos: number; horarios: Date[] }
   | { ok: false; erro: "sem_barbeiro" | "servico_indisponivel" }
@@ -33,7 +33,7 @@ export async function listarHorarios(
   const janela = limitesDoDia(pedido.dia);
   const [faixas, ocupados, bloqueios] = await Promise.all([
     agenda.expediente(barbeiro.id, diaDaSemanaIso(pedido.dia)),
-    agenda.ocupados(barbeiro.id, janela.inicio, janela.fim),
+    agenda.ocupados(barbeiro.id, janela.inicio, janela.fim, pedido.excetoAgendamentoId),
     agenda.indisponibilidades(barbeiro.id, janela.inicio, janela.fim),
   ]);
 

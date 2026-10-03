@@ -75,6 +75,11 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
       return gravado;
     },
     async semearSeVazio() {},
+    async buscarAgendamento() {
+      return null;
+    },
+    async cancelarAgendamento() {},
+    async reagendarAgendamento() {},
   };
 }
 

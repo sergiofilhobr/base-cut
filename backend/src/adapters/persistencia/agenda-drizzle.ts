@@ -1,8 +1,10 @@
-import { and, asc, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, ne } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { Sql } from "postgres";
 import type { Faixa } from "../../domain/agenda/horarios-livres.ts";
+import type { EstadoAgendamento } from "../../domain/agenda/regras.ts";
 import type {
+  AgendamentoDetalhe,
   AgendamentoGravado,
   Cliente,
   NovoAgendamento,
@@ -97,19 +99,62 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
       return linhas;
     },
 
-    async ocupados(barbeiroId, de, ate) {
-      const linhas = await db
+    async ocupados(barbeiroId, de, ate, excetoAgendamentoId) {
+      const filtros = [
+        eq(agendamentos.barbeiroId, barbeiroId),
+        eq(agendamentos.estado, "confirmado"),
+        lt(agendamentos.inicio, ate),
+        gt(agendamentos.fim, de),
+      ];
+      if (excetoAgendamentoId) filtros.push(ne(agendamentos.id, excetoAgendamentoId));
+      return db
         .select({ inicio: agendamentos.inicio, fim: agendamentos.fim })
         .from(agendamentos)
-        .where(
-          and(
-            eq(agendamentos.barbeiroId, barbeiroId),
-            eq(agendamentos.estado, "confirmado"),
-            lt(agendamentos.inicio, ate),
-            gt(agendamentos.fim, de),
-          ),
-        );
-      return linhas;
+        .where(and(...filtros));
+    },
+
+    async buscarAgendamento(id) {
+      const [linha] = await db
+        .select({
+          id: agendamentos.id,
+          barbeiroId: agendamentos.barbeiroId,
+          clienteId: agendamentos.clienteId,
+          telefone: clientes.telefone,
+          inicio: agendamentos.inicio,
+          fim: agendamentos.fim,
+          estado: agendamentos.estado,
+          presencaAvisadaEm: agendamentos.presencaAvisadaEm,
+        })
+        .from(agendamentos)
+        .innerJoin(clientes, eq(clientes.id, agendamentos.clienteId))
+        .where(eq(agendamentos.id, id))
+        .limit(1);
+      if (!linha) return null;
+      const itens = await db
+        .select({
+          servicoId: itensAgendamento.servicoId,
+          nome: itensAgendamento.nome,
+          duracaoMinutos: itensAgendamento.duracaoMinutos,
+          precoCentavos: itensAgendamento.precoCentavos,
+        })
+        .from(itensAgendamento)
+        .where(eq(itensAgendamento.agendamentoId, id));
+      return {
+        ...linha,
+        estado: linha.estado as EstadoAgendamento,
+        itens,
+      } satisfies AgendamentoDetalhe;
+    },
+
+    async cancelarAgendamento(id, estado) {
+      await db.update(agendamentos).set({ estado }).where(eq(agendamentos.id, id));
+    },
+
+    async reagendarAgendamento(id, inicio, fim) {
+      await db
+        .update(agendamentos)
+        .set({ inicio, fim, presencaAvisadaEm: null })
+        .where(eq(agendamentos.id, id));
     },
 
     async indisponibilidades(barbeiroId, de, ate) {

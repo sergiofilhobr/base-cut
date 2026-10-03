@@ -40,6 +40,25 @@ export type AgendamentoGravado = {
   estado: EstadoAgendamento;
 };
 
+export type ItemAgendamento = {
+  servicoId: string | null;
+  nome: string;
+  duracaoMinutos: number;
+  precoCentavos: number;
+};
+
+export type AgendamentoDetalhe = {
+  id: string;
+  barbeiroId: string;
+  clienteId: string;
+  telefone: string;
+  inicio: Date;
+  fim: Date;
+  estado: EstadoAgendamento;
+  presencaAvisadaEm: Date | null;
+  itens: ItemAgendamento[];
+};
+
 export interface RepositorioAgenda {
   barbeiroAtivo(): Promise<Barbeiro | null>;
   barbeiroPorId(id: string): Promise<Barbeiro | null>;
@@ -49,7 +68,18 @@ export interface RepositorioAgenda {
   clientePorTelefone(telefone: string): Promise<Cliente | null>;
   clientePorEmail(email: string): Promise<Cliente | null>;
   expediente(barbeiroId: string, diaSemana: number): Promise<Faixa[]>;
-  ocupados(barbeiroId: string, de: Date, ate: Date): Promise<Intervalo[]>;
+  ocupados(
+    barbeiroId: string,
+    de: Date,
+    ate: Date,
+    excetoAgendamentoId?: string,
+  ): Promise<Intervalo[]>;
+  buscarAgendamento(id: string): Promise<AgendamentoDetalhe | null>;
+  cancelarAgendamento(
+    id: string,
+    estado: "cancelado_pelo_cliente" | "cancelado_pela_casa",
+  ): Promise<void>;
+  reagendarAgendamento(id: string, inicio: Date, fim: Date): Promise<void>;
   indisponibilidades(barbeiroId: string, de: Date, ate: Date): Promise<Intervalo[]>;
   substituirExpediente(
     barbeiroId: string,
