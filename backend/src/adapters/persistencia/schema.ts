@@ -105,6 +105,30 @@ export const agendamentos = pgTable(
   ],
 );
 
+export const canalWhatsapp = pgTable("canal_whatsapp", {
+  id: text("id").primaryKey(),
+  ativo: boolean("ativo").notNull(),
+});
+
+export const mensagens = pgTable(
+  "mensagens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    agendamentoId: uuid("agendamento_id")
+      .notNull()
+      .references(() => agendamentos.id),
+    tipo: text("tipo").notNull(),
+    enviadoEm: timestamp("enviado_em", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (tabela) => [
+    uniqueIndex("mensagens_agendamento_tipo").on(tabela.agendamentoId, tabela.tipo),
+    check(
+      "mensagens_tipo",
+      sql`${tabela.tipo} in ('confirmacao', 'lembrete_24h', 'lembrete_2h', 'aviso_bruno')`,
+    ),
+  ],
+);
+
 export const itensAgendamento = pgTable("itens_agendamento", {
   id: uuid("id").primaryKey().defaultRandom(),
   agendamentoId: uuid("agendamento_id")

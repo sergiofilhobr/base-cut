@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql as drizzleSql } from "drizzle-orm";
@@ -6,18 +6,18 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { Banco } from "../../ports/banco.ts";
 import type { RepositorioAgenda } from "../../ports/agenda.ts";
+import type { RepositorioMensagens } from "../../ports/mensagens.ts";
 import { criarRepositorioAgenda } from "./agenda-drizzle.ts";
+import { criarRepositorioMensagens } from "./mensagens-drizzle.ts";
 import * as schema from "./schema.ts";
 
-const sqlInicial = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "../../../sql/0001_inicio.sql"),
-  "utf8",
-);
+const pastaSql = join(dirname(fileURLToPath(import.meta.url)), "../../../sql");
 
 export type BancoConectado = Banco & {
   fechar(): Promise<void>;
   aplicarSchema(): Promise<void>;
   agenda: RepositorioAgenda;
+  mensagens: RepositorioMensagens;
 };
 
 export function criarBanco(databaseUrl: string): BancoConectado {
@@ -35,8 +35,14 @@ export function criarBanco(databaseUrl: string): BancoConectado {
       await cliente.end();
     },
     async aplicarSchema() {
-      await cliente.unsafe(sqlInicial);
+      const arquivos = readdirSync(pastaSql)
+        .filter((nome) => nome.endsWith(".sql"))
+        .sort();
+      for (const arquivo of arquivos) {
+        await cliente.unsafe(readFileSync(join(pastaSql, arquivo), "utf8"));
+      }
     },
     agenda: criarRepositorioAgenda(cliente),
+    mensagens: criarRepositorioMensagens(cliente),
   };
 }
