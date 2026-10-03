@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { animated, useReducedMotion, useSpring, useTrail } from '@react-spring/web'
 import { BarberPole } from '@/app/components/ui/barber-pole'
-import { BOOKSY_URL } from '@/app/lib/constants'
+import { LinkAgendar } from '@/app/components/ui/link-agendar'
 import { SMOOTH_CONFIG } from '@/app/lib/motion'
 
 const DATA_ROWS = [
@@ -108,11 +107,8 @@ export function Hero() {
           e o CTA, não como um buraco solto no fim da página. */}
       <div className="mt-auto border-t-2 border-ink px-6 sm:px-10 py-10">
         <animated.div style={cta} className="inline-block">
-          <Link
+          <LinkAgendar
             id="hero-cta"
-            href={BOOKSY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
             className="
               inline-flex items-center gap-3 px-8 py-4
               font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
@@ -124,7 +120,7 @@ export function Hero() {
             "
           >
             Agendar horário
-          </Link>
+          </LinkAgendar>
         </animated.div>
       </div>
     </section>

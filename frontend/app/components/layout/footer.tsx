@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BOOKSY_URL } from '@/app/lib/constants'
+import { AgendaNoColofao, LinkAgendar } from '@/app/components/ui/link-agendar'
 
 /* Hallmark · footer archetype: Ft4 Dense colophon · design-system: design.md */
 
@@ -12,7 +12,6 @@ import { BOOKSY_URL } from '@/app/lib/constants'
  */
 const COLOPHON = [
   { termo: 'Endereço', valor: 'R. Juvenal García, 64 — Centro, Itajaí SC' },
-  { termo: 'Agenda', valor: 'Booksy', href: BOOKSY_URL },
   { termo: 'Instagram', valor: '@basecut_', href: 'https://instagram.com/basecut_' },
   {
     termo: 'Barbeiro',
@@ -31,6 +30,7 @@ export function Footer() {
         </p>
 
         <dl className="mt-10 font-mono text-[12px] flex flex-wrap gap-x-10 gap-y-6">
+          <AgendaNoColofao />
           {COLOPHON.map(({ termo, valor, href }) => (
             <div key={termo}>
               <dt className="uppercase tracking-[0.2em] text-muted">
@@ -78,11 +78,8 @@ export function Footer() {
           . © {new Date().getFullYear()}.
         </p>
 
-        <Link
+        <LinkAgendar
           id="footer-cta"
-          href={BOOKSY_URL}
-          target="_blank"
-          rel="noopener noreferrer"
           className="
             mt-10 inline-flex items-center px-8 py-4
             font-mono text-xs uppercase tracking-[0.2em] whitespace-nowrap
@@ -94,7 +91,7 @@ export function Footer() {
           "
         >
           Agendar horário
-        </Link>
+        </LinkAgendar>
       </div>
     </footer>
   )

@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { animated, useReducedMotion, useSpring } from '@react-spring/web'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
-import { BOOKSY_URL, NAV_LINKS } from '@/app/lib/constants'
+import { NAV_LINKS } from '@/app/lib/constants'
+import { LinkAgendar } from '@/app/components/ui/link-agendar'
 
 interface MobileDrawerProps {
   open: boolean
@@ -117,10 +118,7 @@ export function MobileDrawer({ open, onClose, pathname }: MobileDrawerProps) {
         </nav>
 
         <div className="px-6 py-6 border-t-2 border-ink">
-          <Link
-            href={BOOKSY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <LinkAgendar
             onClick={onClose}
             className="
               flex items-center justify-center w-full px-8 py-4
@@ -133,7 +131,7 @@ export function MobileDrawer({ open, onClose, pathname }: MobileDrawerProps) {
             "
           >
             Agendar
-          </Link>
+          </LinkAgendar>
         </div>
       </animated.div>
     </animated.div>

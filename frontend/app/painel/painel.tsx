@@ -147,6 +147,7 @@ function Agenda() {
       <Encaixe servicos={servicos} token={getToken} aoMudar={carregar} />
       <BloqueioForm token={getToken} aoMudar={carregar} />
       <Expediente token={getToken} />
+      <CorteBooksy token={getToken} />
     </div>
   )
 }
@@ -384,6 +385,82 @@ function intervalo(dia: string, modo: 'dia' | 'semana') {
   const segunda = somarDias(dia, 1 - iso)
   const de = new Date(`${segunda}T00:00:00-03:00`)
   return { de: de.toISOString(), ate: new Date(de.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() }
+}
+
+function CorteBooksy({ token }: { token: () => Promise<string | null> }) {
+  const [csv, setCsv] = useState('')
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  async function autorizar() {
+    const autorizacao = await token()
+    return autorizacao
+  }
+
+  return (
+    <div className="mt-10 flex flex-col gap-3">
+      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+        Corte do Booksy
+      </p>
+      <textarea
+        value={csv}
+        onChange={(evento) => setCsv(evento.target.value)}
+        placeholder="nome,telefone,email"
+        className="min-h-24 border-b border-ink bg-transparent py-2 text-sm text-ink"
+      />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          const autorizacao = await autorizar()
+          if (!autorizacao || !csv.trim()) return
+          const resposta = await fetch('/api/painel/importacao/booksy', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'text/csv' },
+            body: csv,
+          })
+          const dados = (await resposta.json()) as { criados?: number; existentes?: number }
+          if (resposta.ok) setAviso(`${dados.criados ?? 0} fichas novas, ${dados.existentes ?? 0} já estavam.`)
+        }}
+      >
+        Importar CSV
+      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={async () => {
+            const autorizacao = await autorizar()
+            if (!autorizacao) return
+            await fetch('/api/painel/casa', {
+              method: 'PUT',
+              headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+              body: JSON.stringify({ agendamento: 'site' }),
+            })
+            setAviso('O link público aponta para o site. O Booksy deixa de ser o destino.')
+          }}
+        >
+          Abrir no site
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={async () => {
+            const autorizacao = await autorizar()
+            if (!autorizacao) return
+            await fetch('/api/painel/casa', {
+              method: 'PUT',
+              headers: { authorization: `Bearer ${autorizacao}`, 'content-type': 'application/json' },
+              body: JSON.stringify({ agendamento: 'booksy' }),
+            })
+            setAviso('O link público voltou para o Booksy.')
+          }}
+        >
+          Voltar ao Booksy
+        </Button>
+      </div>
+      {aviso && <p className="text-sm text-muted">{aviso}</p>}
+    </div>
+  )
 }
 
 function rotuloMotivo(motivo: string) {

@@ -6,11 +6,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BarberPole } from '@/app/components/ui/barber-pole'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
+import { LinkAgendar } from '@/app/components/ui/link-agendar'
 import {
   BARBER_INSTAGRAM_HANDLE,
   BARBER_INSTAGRAM_URL,
   BASE_RUN_WHATSAPP_URL,
-  BOOKSY_URL,
   GOOGLE_MAPS_URL,
   GOOGLE_REVIEW_URL,
   INSTAGRAM_HANDLE,
@@ -162,11 +162,8 @@ export default function LinksPage() {
 
       {/* A ação da casa vem antes das listas: quem abre esta página do
           Instagram normalmente quer marcar horário, não navegar. */}
-      <a
+      <LinkAgendar
         id="links-cta"
-        href={BOOKSY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
         className="
           mt-10 flex items-center justify-center
           min-h-14 px-6 py-4
@@ -179,8 +176,8 @@ export default function LinksPage() {
           transition-opacity duration-200
         "
       >
-        Agendar no Booksy
-      </a>
+        Agendar
+      </LinkAgendar>
 
       <div className="mt-6 flex flex-col gap-12">
         <Grupo itens={PRINCIPAIS} />

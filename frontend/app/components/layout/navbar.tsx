@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { ThemeToggle } from '@/app/components/ui/theme-toggle'
 import { MobileDrawer } from '@/app/components/layout/mobile-drawer'
-import { BOOKSY_URL, NAV_LINKS } from '@/app/lib/constants'
+import { NAV_LINKS } from '@/app/lib/constants'
+import { LinkAgendar } from '@/app/components/ui/link-agendar'
 
 /* Hallmark · nav archetype: N7 Brutal slab · design-system: design.md */
 
@@ -111,11 +112,8 @@ export function Navbar() {
 
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Link
+          <LinkAgendar
             id="navbar-cta"
-            href={BOOKSY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
             className="
               hidden sm:inline-flex
               px-5 py-2.5
@@ -128,7 +126,7 @@ export function Navbar() {
             "
           >
             Agendar
-          </Link>
+          </LinkAgendar>
 
           <button
             type="button"
