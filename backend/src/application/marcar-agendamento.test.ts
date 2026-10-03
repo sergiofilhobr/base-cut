@@ -108,6 +108,14 @@ function agendaFalsa(inicial?: { clientes?: Cliente[] }): RepositorioAgenda & {
       return [];
     },
     async removerBloqueio() {},
+    async registrarAuditoria() {},
+    async listarAuditoria() {
+      return [];
+    },
+    async anonimizarCliente() {},
+    async agendamentosDoCliente() {
+      return [];
+    },
   };
 }
 

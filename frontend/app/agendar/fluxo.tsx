@@ -27,6 +27,7 @@ const ERROS: Record<string, string> = {
   servico_indisponivel: 'Um dos serviços não está mais disponível.',
   sem_barbeiro: 'A agenda ainda não tem profissional.',
   pedido_invalido: 'Confira nome, telefone e e-mail.',
+  sem_consentimento: 'A marcação pede o seu consentimento.',
 }
 
 export function FluxoAgendar() {
@@ -41,6 +42,7 @@ export function FluxoAgendar() {
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
+  const [consentimento, setConsentimento] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [confirmado, setConfirmado] = useState<Confirmado | null>(null)
@@ -147,6 +149,7 @@ export function FluxoAgendar() {
           telefone,
           email,
           barbeiroId: barbeiroId ?? undefined,
+          consentimento,
         }),
       })
       const dados = (await resposta.json()) as { erro?: string; id?: string; inicio?: string; fim?: string }
@@ -305,8 +308,20 @@ export function FluxoAgendar() {
             autoComplete="email"
             type="email"
           />
+          <label className="flex items-start gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={consentimento}
+              onChange={(evento) => setConsentimento(evento.target.checked)}
+              className="mt-1"
+            />
+            Concordo em guardar nome, telefone e e-mail para marcar e lembrar este horário.
+          </label>
           {erro && <p className="text-sm text-ink">{erro}</p>}
-          <Botao type="submit" disabled={enviando || !nome.trim() || !telefone.trim() || !email.trim()}>
+          <Botao
+            type="submit"
+            disabled={enviando || !consentimento || !nome.trim() || !telefone.trim() || !email.trim()}
+          >
             {enviando ? 'Gravando' : 'Confirmar horário'}
           </Botao>
         </form>

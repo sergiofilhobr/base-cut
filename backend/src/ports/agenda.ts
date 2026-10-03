@@ -25,6 +25,7 @@ export type NovoAgendamento = {
   inicio: Date;
   fim: Date;
   origem: "site" | "equipe";
+  consentimentoEm?: Date | null;
   itens: Array<{
     servicoId: string;
     nome: string;
@@ -115,6 +116,19 @@ export interface RepositorioAgenda {
   }): Promise<Bloqueio>;
   listarBloqueios(barbeiroId: string, de: Date, ate: Date): Promise<Bloqueio[]>;
   removerBloqueio(id: string): Promise<void>;
+  registrarAuditoria(dados: {
+    agendamentoId: string | null;
+    clienteId: string | null;
+    acao: string;
+    ator: string;
+  }): Promise<void>;
+  listarAuditoria(clienteId: string): Promise<
+    Array<{ acao: string; ator: string; em: Date; agendamentoId: string | null }>
+  >;
+  anonimizarCliente(id: string): Promise<void>;
+  agendamentosDoCliente(
+    clienteId: string,
+  ): Promise<Array<{ id: string; inicio: Date; fim: Date; estado: EstadoAgendamento }>>;
   semearSeVazio(dados: {
     barbeiro: string;
     servicos: Array<{ nome: string; duracaoMinutos: number; precoCentavos: number }>;

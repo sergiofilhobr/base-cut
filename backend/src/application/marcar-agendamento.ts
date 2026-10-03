@@ -21,6 +21,7 @@ export type PedidoDeAgendamento = {
   email: string | null;
   origem: "site" | "equipe";
   barbeiroId?: string;
+  consentimentoEm?: Date | null;
 };
 
 export async function marcarAgendamento(
@@ -79,6 +80,7 @@ export async function marcarAgendamento(
       inicio: pedido.inicio,
       fim,
       origem: pedido.origem,
+      consentimentoEm: pedido.consentimentoEm ?? null,
       itens: escolhidos.map((servico) => ({
         servicoId: servico.id,
         nome: servico.nome,

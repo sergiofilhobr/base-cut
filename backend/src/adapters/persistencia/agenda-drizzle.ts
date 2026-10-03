@@ -16,6 +16,7 @@ import type {
 } from "../../ports/agenda.ts";
 import {
   agendamentos,
+  auditoria,
   barbeiros,
   clientes,
   expedientes,
@@ -310,6 +311,58 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
       await db.delete(indisponibilidades).where(eq(indisponibilidades.id, id));
     },
 
+    async registrarAuditoria(dados) {
+      await db.insert(auditoria).values({
+        agendamentoId: dados.agendamentoId,
+        clienteId: dados.clienteId,
+        acao: dados.acao,
+        ator: dados.ator,
+      });
+    },
+
+    async listarAuditoria(clienteId) {
+      return db
+        .select({
+          acao: auditoria.acao,
+          ator: auditoria.ator,
+          em: auditoria.em,
+          agendamentoId: auditoria.agendamentoId,
+        })
+        .from(auditoria)
+        .where(eq(auditoria.clienteId, clienteId))
+        .orderBy(asc(auditoria.em));
+    },
+
+    async agendamentosDoCliente(clienteId) {
+      const linhas = await db
+        .select({
+          id: agendamentos.id,
+          inicio: agendamentos.inicio,
+          fim: agendamentos.fim,
+          estado: agendamentos.estado,
+        })
+        .from(agendamentos)
+        .where(eq(agendamentos.clienteId, clienteId))
+        .orderBy(asc(agendamentos.inicio));
+      return linhas.map((linha) => ({
+        ...linha,
+        estado: linha.estado as EstadoAgendamento,
+      }));
+    },
+
+    async anonimizarCliente(id) {
+      await db
+        .update(clientes)
+        .set({
+          nome: "Excluído",
+          telefone: `excluido-${id}`,
+          email: null,
+          clerkUserId: null,
+          observacao: null,
+        })
+        .where(eq(clientes.id, id));
+    },
+
     async indisponibilidades(barbeiroId, de, ate) {
       return db
         .select({ inicio: indisponibilidades.inicio, fim: indisponibilidades.fim })
@@ -348,6 +401,7 @@ export function criarRepositorioAgenda(cliente: Sql): RepositorioAgenda {
             fim: dados.fim,
             estado: "confirmado",
             origem: dados.origem,
+            consentimentoEm: dados.consentimentoEm ?? null,
           })
           .returning({
             id: agendamentos.id,
