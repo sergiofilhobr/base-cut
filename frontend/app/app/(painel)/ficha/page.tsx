@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useApi, useSessao } from '../../sessao'
 import { Button } from '../../ui/button'
 import { Caixa, Campo, Falha } from '../../ui/campo'
-import { Carregando, Pagina, Regua, Secao } from '../../ui/secao'
+import { Modal } from '../../ui/modal'
+import { EsqueletoLista, Pagina, Regua, Secao } from '../../ui/secao'
 import { useFicha } from '../eu'
 
 type FichaCompleta = {
@@ -41,7 +42,9 @@ export default function FichaPage() {
   if (!ficha) {
     return (
       <Pagina titulo="Só o cliente.">
-        <p className="text-sm text-muted max-w-prose">A equipe não tem ficha de cliente.</p>
+        <div role="alert" className="alert">
+          <span>A equipe não tem ficha de cliente.</span>
+        </div>
       </Pagina>
     )
   }
@@ -104,7 +107,7 @@ export default function FichaPage() {
       <Falha>{erro}</Falha>
 
       {dados === null ? (
-        <Carregando />
+        <EsqueletoLista linhas={2} />
       ) : (
         <>
           <Secao titulo="Avisos" descricao="O lembrete do horário vai sempre. Campanha e oferta, só se você quiser.">
@@ -125,13 +128,12 @@ export default function FichaPage() {
             titulo="Excluir a ficha"
             descricao="Apaga nome, telefone e e-mail. Os horários passados ficam anônimos. Não tem volta."
           >
-            {!excluindo ? (
-              <Button variant="ghost" onClick={() => setExcluindo(true)}>
-                Quero excluir
-              </Button>
-            ) : (
+            <Button variant="ghost" onClick={() => setExcluindo(true)}>
+              Quero excluir
+            </Button>
+            <Modal aberto={excluindo} titulo="Excluir a ficha" onFechar={() => setExcluindo(false)}>
               <form
-                className="flex flex-col gap-4 max-w-sm"
+                className="flex flex-col gap-4"
                 noValidate
                 onSubmit={(evento) => {
                   evento.preventDefault()
@@ -143,6 +145,7 @@ export default function FichaPage() {
                   void excluir()
                 }}
               >
+                <p className="text-sm text-ink">Apaga nome, telefone e e-mail. Não tem volta.</p>
                 <Campo
                   label="Digite seu telefone para confirmar"
                   inputMode="tel"
@@ -150,6 +153,7 @@ export default function FichaPage() {
                   onChange={(e) => setConfirmacao(e.target.value)}
                   ajuda={ficha.telefone}
                 />
+                <Falha>{erro}</Falha>
                 <div className="flex flex-wrap gap-2">
                   <Button type="submit" variant="outline" ocupado={ocupado === 'excluir'}>
                     Excluir de vez
@@ -159,7 +163,7 @@ export default function FichaPage() {
                   </Button>
                 </div>
               </form>
-            )}
+            </Modal>
           </Secao>
         </>
       )}

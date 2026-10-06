@@ -4,7 +4,7 @@
  * design-system: design.md · designed-as-app
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { animated, useInView, useReducedMotion, useTrail } from '@react-spring/web'
 import { SMOOTH_CONFIG } from '@/app/lib/motion'
 import { GOOGLE_MAPS_URL, GOOGLE_REVIEW_URL } from '@/app/lib/constants'
@@ -43,9 +43,27 @@ export function GoogleReview() {
   const reduce = useReducedMotion()
   const [ref, inView] = useInView({ once: true, amount: 0.2 })
   const [expanded, setExpanded] = useState(false)
+  const [daCasa, setDaCasa] = useState<Array<{ quote: string; author: string; stars: number }>>([])
 
-  const visible = expanded ? REVIEWS : REVIEWS.slice(0, VISIBLE_COUNT)
-  const hiddenCount = REVIEWS.length - VISIBLE_COUNT
+  useEffect(() => {
+    void fetch('/api/avaliacoes')
+      .then((resposta) => (resposta.ok ? resposta.json() : null))
+      .then((dados: { avaliacoes?: Array<{ nome: string; texto: string; nota: number }> } | null) => {
+        if (!dados?.avaliacoes) return
+        setDaCasa(
+          dados.avaliacoes.map((item) => ({
+            quote: item.texto,
+            author: item.nome,
+            stars: item.nota,
+          })),
+        )
+      })
+      .catch(() => undefined)
+  }, [])
+
+  const todas = [...daCasa, ...REVIEWS]
+  const visible = expanded ? todas : todas.slice(0, VISIBLE_COUNT)
+  const hiddenCount = todas.length - VISIBLE_COUNT
 
   const from = reduce ? { opacity: 0 } : { opacity: 0, y: 32 }
   const to = reduce ? { opacity: 1 } : { opacity: 1, y: 0 }
@@ -93,7 +111,7 @@ export function GoogleReview() {
           ? trail.map((style, i) => {
               const { quote, author, stars } = visible[i]
               return (
-                <animated.figure key={author} className="py-4" style={style}>
+                <animated.figure key={`${author}-${i}`} className="py-4" style={style}>
                   <Stars n={stars} />
                   <blockquote className="mt-2 text-sm sm:text-base leading-relaxed text-ink">
                     “{quote}”

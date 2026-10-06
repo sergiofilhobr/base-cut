@@ -14,6 +14,21 @@ export type RepositorioRelacao = {
   criarCampanha(dados: { nome: string; texto: string }): Promise<{ id: string }>;
   audiencia(): Promise<Array<{ id: string; telefone: string }>>;
   linhasDoPeriodo(de: Date, ate: Date): Promise<Array<{ estado: string; totalCentavos: number; clienteNovo: boolean }>>;
+  listarEspera(): Promise<
+    Array<{ id: string; clienteId: string; nome: string; telefone: string; servicoIds: string; desejadoEm: Date }>
+  >;
+  removerEspera(id: string): Promise<void>;
+  listarRecorrencias(): Promise<
+    Array<{ id: string; clienteId: string; nome: string; telefone: string; servicoIds: string; diaSemana: number; hora: string }>
+  >;
+  listarAvaliacoes(publicada: boolean | null): Promise<
+    Array<{ id: string; nota: number; texto: string; publicada: boolean; nome: string }>
+  >;
+  listarHorariosDesconto(): Promise<
+    Array<{ id: string; diaSemana: number; inicio: string; fim: string; descontoCentavos: number }>
+  >;
+  ficha(clienteId: string): Promise<{ pontos: number; observacao: string | null; runClub: boolean; optIn: boolean } | null>;
+  gravarObservacao(clienteId: string, observacao: string): Promise<void>;
 };
 
 export function criarRepositorioRelacao(sql: Sql): RepositorioRelacao {
@@ -107,6 +122,64 @@ export function criarRepositorioRelacao(sql: Sql): RepositorioRelacao {
         totalCentavos: linha.totalCentavos,
         clienteNovo: Number(linha.anteriores) === 0,
       }));
+    },
+    async listarEspera() {
+      return sql`
+        select e.id, e.cliente_id as "clienteId", c.nome, c.telefone,
+          e.servico_ids as "servicoIds", e.desejado_em as "desejadoEm"
+        from lista_espera e
+        join clientes c on c.id = e.cliente_id
+        order by e.desejado_em
+      `;
+    },
+    async removerEspera(id) {
+      await sql`delete from lista_espera where id = ${id}`;
+    },
+    async listarRecorrencias() {
+      return sql`
+        select r.id, r.cliente_id as "clienteId", c.nome, c.telefone,
+          r.servico_ids as "servicoIds", r.dia_semana as "diaSemana", r.hora
+        from recorrencias r
+        join clientes c on c.id = r.cliente_id
+        where r.ativa = true
+        order by r.dia_semana, r.hora
+      `;
+    },
+    async listarAvaliacoes(publicada) {
+      if (publicada === null) {
+        return sql`
+          select a.id, a.nota, a.texto, a.publicada, c.nome
+          from avaliacoes a
+          join clientes c on c.id = a.cliente_id
+          order by a.publicada, c.nome
+        `;
+      }
+      return sql`
+        select a.id, a.nota, a.texto, a.publicada, c.nome
+        from avaliacoes a
+        join clientes c on c.id = a.cliente_id
+        where a.publicada = ${publicada}
+        order by c.nome
+      `;
+    },
+    async listarHorariosDesconto() {
+      return sql`
+        select id, dia_semana as "diaSemana", inicio, fim, desconto_centavos as "descontoCentavos"
+        from horarios_desconto
+        order by dia_semana, inicio
+      `;
+    },
+    async ficha(clienteId) {
+      const [linha] = await sql<
+        Array<{ pontos: number; observacao: string | null; runClub: boolean; optIn: boolean }>
+      >`
+        select pontos::int as pontos, observacao, run_club as "runClub", marketing_opt_in as "optIn"
+        from clientes where id = ${clienteId}
+      `;
+      return linha ?? null;
+    },
+    async gravarObservacao(clienteId, observacao) {
+      await sql`update clientes set observacao = ${observacao} where id = ${clienteId}`;
     },
   };
 }

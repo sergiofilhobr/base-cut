@@ -92,6 +92,23 @@ export function Carregando({ children = 'Abrindo.' }: { children?: ReactNode }) 
   )
 }
 
+/** Lista ainda sem dados — o skeleton ocupa o lugar das linhas. */
+export function EsqueletoLista({ linhas = 3 }: { linhas?: number }) {
+  return (
+    <ul className="list" aria-hidden="true">
+      {Array.from({ length: linhas }, (_, indice) => (
+        <li key={indice} className="list-row">
+          <div className="skeleton h-8 w-16" />
+          <div className="list-col-grow flex flex-col gap-2">
+            <div className="skeleton h-4 w-40" />
+            <div className="skeleton h-3 w-24" />
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** Rótulo de estado do agendamento: mono, sem cor — peso e caixa carregam. */
 export function Estado({ estado, rotulo }: { estado: string; rotulo: string }) {
   const vivo = estado === 'confirmado'
@@ -110,10 +127,18 @@ export function Estado({ estado, rotulo }: { estado: string; rotulo: string }) {
 }
 
 /** Disclosure nativo com o sumário na voz dos botões. */
-export function Dobra({ titulo, children }: { titulo: ReactNode; children: ReactNode }) {
+export function Dobra({
+  titulo,
+  children,
+  aberto = false,
+}: {
+  titulo: ReactNode
+  children: ReactNode
+  aberto?: boolean
+}) {
   return (
-    <div className="collapse collapse-plus rounded-none border-b border-rule">
-      <input type="checkbox" aria-label={typeof titulo === 'string' ? titulo : 'Abrir'} />
+    <div className="collapse collapse-plus rounded-none border-b border-base-300">
+      <input type="checkbox" defaultChecked={aberto} aria-label={typeof titulo === 'string' ? titulo : 'Abrir'} />
       <div className="collapse-title px-0 py-4 min-h-0 font-mono text-[11px] uppercase tracking-[0.18em] text-ink after:text-muted after:top-4">
         {titulo}
       </div>

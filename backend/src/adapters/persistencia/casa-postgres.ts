@@ -14,6 +14,9 @@ export type RepositorioCasa = {
   marcarRunClub(clienteId: string): Promise<void>;
   publicarFoto(dados: { src: string; alt: string; servicoId: string | null }): Promise<{ id: string }>;
   fotosPublicadas(): Promise<Array<{ id: string; src: string; alt: string; servicoId: string | null }>>;
+  inscritos(eventoId: string): Promise<
+    Array<{ clienteId: string; nome: string; telefone: string; presente: boolean; runClub: boolean }>
+  >;
 };
 
 export function criarRepositorioCasa(sql: Sql): RepositorioCasa {
@@ -119,6 +122,15 @@ export function criarRepositorioCasa(sql: Sql): RepositorioCasa {
         from galeria
         where publicada = true
         order by id
+      `;
+    },
+    async inscritos(eventoId) {
+      return sql<Array<{ clienteId: string; nome: string; telefone: string; presente: boolean; runClub: boolean }>>`
+        select i.cliente_id as "clienteId", c.nome, c.telefone, i.presente, c.run_club as "runClub"
+        from run_inscricoes i
+        join clientes c on c.id = i.cliente_id
+        where i.evento_id = ${eventoId}
+        order by c.nome
       `;
     },
   };

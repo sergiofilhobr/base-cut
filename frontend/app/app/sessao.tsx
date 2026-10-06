@@ -47,7 +47,7 @@ const CHAVE_LOCAL = 'basecut.sessao'
 
 export function modoDaSessao(): ModoSessao {
   if (CHAVE_CLERK) return 'clerk'
-  if (AUTH_LOCAL) return 'local'
+  if (AUTH_LOCAL && process.env.NODE_ENV !== 'production') return 'local'
   return 'ausente'
 }
 

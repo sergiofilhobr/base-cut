@@ -13,14 +13,19 @@ import {
 import { useApi } from '../../sessao'
 import { Button, cn } from '../../ui/button'
 import { Campo, Falha, Selecao } from '../../ui/campo'
-import { Carregando, Dobra, Pagina, Secao, Vazio } from '../../ui/secao'
+import { Dobra, EsqueletoLista, Pagina, Secao, Vazio } from '../../ui/secao'
 import { useEquipe } from '../eu'
 import { rotuloMotivo } from '../hoje'
-import { LinhaAgenda, type LinhaDaAgenda, type ServicoBasico } from './linha-agenda'
+import { LinhaAgenda, paraInputLocal, type LinhaDaAgenda, type ServicoBasico } from './linha-agenda'
 
 type Bloqueio = { id: string; inicio: string; fim: string; motivo: string }
 type Barbeiro = { id: string; nome: string }
 type Modo = 'dia' | 'semana'
+type Espera = { id: string; nome: string; telefone: string; servicoIds: string; desejadoEm: string }
+type Recorrencia = { id: string; nome: string; diaSemana: number; hora: string; proxima: string | null }
+type Chamada = { esperaId: string; telefone: string; nome: string; inicio: string; servicoIds: string[] }
+
+const DIAS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 
 /** Agenda — dia ou semana, por barbeiro, com encaixe e indisponibilidade. */
 export default function AgendaPage() {
@@ -33,6 +38,9 @@ export default function AgendaPage() {
   const [servicos, setServicos] = useState<ServicoBasico[]>([])
   const [linhas, setLinhas] = useState<LinhaDaAgenda[] | null>(null)
   const [bloqueios, setBloqueios] = useState<Bloqueio[]>([])
+  const [espera, setEspera] = useState<Espera[]>([])
+  const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([])
+  const [chamada, setChamada] = useState<Chamada | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   const carregar = useCallback(() => {
@@ -58,10 +66,21 @@ export default function AgendaPage() {
     void carregar()
   }, [carregar])
 
+  const carregarRelacao = useCallback(() => {
+    return Promise.all([
+      api.chamar<{ espera: Espera[] }>('/api/painel/espera'),
+      api.chamar<{ recorrencias: Recorrencia[] }>('/api/painel/recorrencias'),
+    ]).then(([fila, serie]) => {
+      setEspera(fila.dados?.espera ?? [])
+      setRecorrencias(serie.dados?.recorrencias ?? [])
+    })
+  }, [api])
+
   useEffect(() => {
     void api.chamar<{ servicos: ServicoBasico[] }>('/api/servicos').then((r) => setServicos(r.dados?.servicos ?? []))
     void api.chamar<{ barbeiros: Barbeiro[] }>('/api/barbeiros').then((r) => setBarbeiros(r.dados?.barbeiros ?? []))
-  }, [api])
+    void carregarRelacao()
+  }, [api, carregarRelacao])
 
   /* Aviso do navegador quando entra horário novo — só com permissão dada. */
   useEffect(() => {
@@ -97,6 +116,14 @@ export default function AgendaPage() {
   if (!equipe) return <SoEquipe />
 
   const passo = modo === 'dia' ? 1 : 7
+  const { de, ate } = modo === 'dia' ? intervaloDoDia(dia) : intervaloDaSemana(dia)
+  const recorrenciasNoPeriodo = recorrencias.filter(
+    (item) => item.proxima && item.proxima >= de && item.proxima < ate,
+  )
+
+  async function recarregarTudo() {
+    await Promise.all([carregar(), carregarRelacao()])
+  }
 
   return (
     <Pagina
@@ -117,17 +144,15 @@ export default function AgendaPage() {
       }
     >
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
-        <div role="group" aria-label="Período" className="join">
+        <div role="tablist" aria-label="Período" className="tabs tabs-box">
           {(['dia', 'semana'] as const).map((opcao) => (
             <button
               key={opcao}
               type="button"
-              aria-pressed={modo === opcao}
+              role="tab"
+              aria-selected={modo === opcao}
               onClick={() => setModo(opcao)}
-              className={cn(
-                'btn join-item font-mono text-[11px] font-normal uppercase tracking-[0.18em] shadow-none',
-                modo === opcao ? 'btn-primary' : 'btn-outline',
-              )}
+              className={cn('tab font-mono text-[11px] uppercase tracking-[0.18em]', modo === opcao && 'tab-active')}
             >
               {opcao === 'dia' ? 'Dia' : 'Semana'}
             </button>
@@ -157,10 +182,72 @@ export default function AgendaPage() {
         )}
       </div>
 
+      {recorrenciasNoPeriodo.length > 0 && (
+        <Secao titulo="Recorrências" descricao="A próxima ocorrência de quem volta no mesmo dia e hora.">
+          <ul className="list">
+            {recorrenciasNoPeriodo.map((item) => (
+              <li key={item.id} className="list-row">
+                <div>
+                  <p className="font-display font-black text-2xl leading-none tabular-nums text-ink">
+                    {item.proxima ? formatarHorario(item.proxima) : item.hora}
+                  </p>
+                </div>
+                <div className="list-col-grow">
+                  <p className="text-ink">{item.nome}</p>
+                  <p className="text-sm text-muted">
+                    {DIAS[item.diaSemana - 1]} · {item.hora}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
+
+      <Secao titulo="Lista de espera" descricao="Quem pediu um horário tomado. Chamar abre o encaixe preenchido.">
+        {espera.length === 0 ? (
+          <Vazio>Ninguém esperando.</Vazio>
+        ) : (
+          <ul className="list">
+            {espera.map((item) => (
+              <li key={item.id} className="list-row">
+                <div>
+                  <p className="font-display font-black text-2xl leading-none tabular-nums text-ink">
+                    {formatarHorario(item.desejadoEm)}
+                  </p>
+                </div>
+                <div className="list-col-grow">
+                  <p className="text-ink">{item.nome}</p>
+                  <p className="text-sm text-muted">
+                    {nomesDosServicos(item.servicoIds, servicos)} · {item.telefone}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setChamada({
+                      esperaId: item.id,
+                      telefone: item.telefone,
+                      nome: item.nome,
+                      inicio: paraInputLocal(item.desejadoEm),
+                      servicoIds: item.servicoIds.split(',').filter(Boolean),
+                    })
+                    document.getElementById('encaixe')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                >
+                  Chamar
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Secao>
+
       <Secao titulo="Horários">
         {erro && <Falha>{erro}</Falha>}
         {linhas === null ? (
-          <Carregando />
+          <EsqueletoLista />
         ) : linhas.length === 0 ? (
           <Vazio>Nenhum horário {modo === 'dia' ? 'nesse dia' : 'nessa semana'}.</Vazio>
         ) : (
@@ -171,9 +258,9 @@ export default function AgendaPage() {
                   {formatarDiaLongo(`${chave}T12:00:00-03:00`)}
                 </p>
               )}
-              <ul>
+              <ul className="list">
                 {grupo.map((linha) => (
-                  <LinhaAgenda key={linha.id} linha={linha} servicos={servicos} aoMudar={carregar} />
+                  <LinhaAgenda key={linha.id} linha={linha} servicos={servicos} aoMudar={recarregarTudo} />
                 ))}
               </ul>
             </div>
@@ -185,7 +272,7 @@ export default function AgendaPage() {
         {bloqueios.length === 0 ? (
           <Vazio>Nenhuma no período.</Vazio>
         ) : (
-          <ul>
+          <ul className="list">
             {bloqueios.map((bloqueio) => (
               <BloqueioLinha key={bloqueio.id} bloqueio={bloqueio} aoMudar={carregar} />
             ))}
@@ -193,9 +280,16 @@ export default function AgendaPage() {
         )}
       </Secao>
 
-      <section>
-        <Dobra titulo="Encaixar um horário">
-          <Encaixe servicos={servicos} aoMudar={carregar} />
+      <section id="encaixe">
+        <Dobra key={chamada?.esperaId ?? 'encaixe'} titulo="Encaixar um horário" aberto={Boolean(chamada)}>
+          <Encaixe
+            servicos={servicos}
+            inicial={chamada}
+            aoMudar={async () => {
+              setChamada(null)
+              await recarregarTudo()
+            }}
+          />
         </Dobra>
         <Dobra titulo="Nova indisponibilidade">
           <NovoBloqueio aoMudar={carregar} />
@@ -209,8 +303,8 @@ function BloqueioLinha({ bloqueio, aoMudar }: { bloqueio: Bloqueio; aoMudar: () 
   const api = useApi()
   const [ocupado, setOcupado] = useState(false)
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-3 text-sm">
-      <span className="text-ink">
+    <li className="list-row text-sm">
+      <span className="list-col-grow text-ink">
         {rotuloMotivo(bloqueio.motivo)}
         <span className="text-muted">
           {' '}
@@ -241,12 +335,20 @@ const ERROS_ENCAIXE: Record<string, string> = {
   email_de_outra_ficha: 'Esse e-mail já está em outro telefone.',
 }
 
-function Encaixe({ servicos, aoMudar }: { servicos: ServicoBasico[]; aoMudar: () => Promise<void> }) {
+function Encaixe({
+  servicos,
+  aoMudar,
+  inicial,
+}: {
+  servicos: ServicoBasico[]
+  aoMudar: () => Promise<void>
+  inicial?: Chamada | null
+}) {
   const api = useApi()
-  const [telefone, setTelefone] = useState('')
-  const [nome, setNome] = useState('')
-  const [inicio, setInicio] = useState('')
-  const [servicoIds, setServicoIds] = useState<string[]>([])
+  const [telefone, setTelefone] = useState(inicial?.telefone ?? '')
+  const [nome, setNome] = useState(inicial?.nome ?? '')
+  const [inicio, setInicio] = useState(inicial?.inicio ?? '')
+  const [servicoIds, setServicoIds] = useState<string[]>(inicial?.servicoIds ?? [])
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
@@ -266,6 +368,9 @@ function Encaixe({ servicos, aoMudar }: { servicos: ServicoBasico[]; aoMudar: ()
     if (!resposta.ok) {
       setErro(ERROS_ENCAIXE[resposta.dados?.erro ?? ''] ?? 'Não foi possível gravar o encaixe.')
       return
+    }
+    if (inicial?.esperaId) {
+      await api.chamar(`/api/painel/espera/${inicial.esperaId}`, { metodo: 'DELETE' })
     }
     setTelefone('')
     setNome('')
@@ -353,10 +458,20 @@ function NovoBloqueio({ aoMudar }: { aoMudar: () => Promise<void> }) {
   )
 }
 
+function nomesDosServicos(ids: string, servicos: ServicoBasico[]) {
+  const nomes = ids
+    .split(',')
+    .map((id) => servicos.find((servico) => servico.id === id)?.nome)
+    .filter((nome): nome is string => Boolean(nome))
+  return nomes.join(' + ') || 'Serviço a confirmar'
+}
+
 export function SoEquipe() {
   return (
     <Pagina titulo="Só a equipe.">
-      <p className="text-sm text-muted max-w-prose">Esta parte do app é da casa. A sua agenda está em Horários.</p>
+      <div role="alert" className="alert">
+        <span>Esta parte do app é da casa. A sua agenda está em Horários.</span>
+      </div>
     </Pagina>
   )
 }

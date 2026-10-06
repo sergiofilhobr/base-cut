@@ -14,7 +14,8 @@ import {
 import { useApi } from '../sessao'
 import { Button, classesDoBotao, cn } from '../ui/button'
 import { Campo, Falha } from '../ui/campo'
-import { Carregando, Estado, Pagina, Secao, Vazio } from '../ui/secao'
+import { Modal } from '../ui/modal'
+import { EsqueletoLista, Estado, Pagina, Secao, Vazio } from '../ui/secao'
 import { useFicha } from './eu'
 
 type Horario = {
@@ -86,7 +87,7 @@ export function Horarios() {
     >
       {erro && <Falha>{erro}</Falha>}
       {lista === null ? (
-        <Carregando />
+        <EsqueletoLista />
       ) : (
         <>
           <Secao titulo="Próximo">
@@ -103,9 +104,11 @@ export function Horarios() {
             )}
           </Secao>
 
+          <ProximaCorrida telefone={ficha?.telefone ?? null} />
+
           {fila.length > 0 && (
             <Secao titulo="Na fila">
-              <ul>
+              <ul className="list">
                 {fila.map((item) => (
                   <LinhaCliente key={item.id} horario={item} aoMudar={carregar} />
                 ))}
@@ -117,7 +120,7 @@ export function Horarios() {
             {passados.length === 0 ? (
               <Vazio>Ainda nada por aqui.</Vazio>
             ) : (
-              <ul>
+              <ul className="list">
                 {passados.map((item) => (
                   <LinhaCliente key={item.id} horario={item} aoMudar={carregar} />
                 ))}
@@ -165,23 +168,23 @@ function ProximoHorario({ horario, aoMudar }: { horario: Horario; aoMudar: () =>
 function LinhaCliente({ horario, aoMudar }: { horario: Horario; aoMudar: () => Promise<void> }) {
   const vivo = horario.estado === 'confirmado'
   return (
-    <li className={cn('border-b border-rule py-4', !vivo && 'opacity-80')}>
-      <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] gap-x-5 gap-y-2 items-baseline">
-        <p className="text-ink">
-          <span className="font-display font-black text-xl leading-none tabular-nums">{formatarHorario(horario.inicio)}</span>
-          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.15em] text-muted">
-            {formatarDataCurta(horario.inicio)}
-          </span>
-        </p>
+    <li className={cn('list-row', !vivo && 'opacity-80')}>
+      <p className="text-ink">
+        <span className="font-display font-black text-xl leading-none tabular-nums">{formatarHorario(horario.inicio)}</span>
+        <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.15em] text-muted">
+          {formatarDataCurta(horario.inicio)}
+        </span>
+      </p>
+      <div className="list-col-grow min-w-0">
         <p className="text-sm text-ink">
           {horario.servicos.map((item) => item.nome).join(' + ')}
           <span className="block text-muted">com {horario.barbeiro}</span>
         </p>
-        <div className="col-span-2 sm:col-span-1 sm:text-right">
+        <div className="mt-2">
           <Estado estado={horario.estado} rotulo={rotuloEstado(horario.estado)} />
         </div>
+        {vivo && <Acoes horario={horario} aoMudar={aoMudar} compacta />}
       </div>
-      {vivo && <Acoes horario={horario} aoMudar={aoMudar} compacta />}
     </li>
   )
 }
@@ -267,9 +270,10 @@ function Acoes({ horario, aoMudar, compacta = false }: { horario: Horario; aoMud
         </div>
       )}
 
-      {modo === 'cancelar' && (
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-ink">Cancelar este horário?</span>
+      <Modal aberto={modo === 'cancelar'} titulo="Cancelar horário" onFechar={() => setModo('nada')}>
+        <p className="text-sm text-ink">Cancelar este horário? Não tem volta.</p>
+        <Falha>{erro}</Falha>
+        <div className="mt-6 flex flex-wrap gap-2">
           <Button variant="outline" size="sm" ocupado={ocupado} onClick={() => void cancelar()}>
             Sim, cancelar
           </Button>
@@ -277,7 +281,7 @@ function Acoes({ horario, aoMudar, compacta = false }: { horario: Horario; aoMud
             Manter
           </Button>
         </div>
-      )}
+      </Modal>
 
       {modo === 'mudar' && (
         <div className="max-w-md">
@@ -294,27 +298,26 @@ function Acoes({ horario, aoMudar, compacta = false }: { horario: Horario; aoMud
             ajuda="Os mesmos serviços, outro começo."
           />
           {horarios === null ? (
-            <Carregando>Procurando horários.</Carregando>
+            <EsqueletoLista linhas={1} />
           ) : horarios.length === 0 ? (
             <Vazio>Nenhum horário livre nesse dia.</Vazio>
           ) : (
-            <ul className="mt-2 flex flex-wrap gap-2">
+            <div className="join flex-wrap mt-2">
               {horarios.map((opcao) => (
-                <li key={opcao}>
-                  <button
-                    type="button"
-                    aria-pressed={inicio === opcao}
-                    onClick={() => setInicio(opcao)}
-                    className={cn(
-                      'btn btn-sm min-w-16 font-mono text-xs font-normal shadow-none',
-                      inicio === opcao ? 'btn-primary' : 'btn-outline',
-                    )}
-                  >
-                    {formatarHorario(opcao)}
-                  </button>
-                </li>
+                <button
+                  key={opcao}
+                  type="button"
+                  aria-pressed={inicio === opcao}
+                  onClick={() => setInicio(opcao)}
+                  className={cn(
+                    'btn join-item btn-sm min-w-16 font-mono text-xs font-normal shadow-none',
+                    inicio === opcao ? 'btn-primary' : 'btn-outline',
+                  )}
+                >
+                  {formatarHorario(opcao)}
+                </button>
               ))}
-            </ul>
+            </div>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
             <Button disabled={!inicio} ocupado={ocupado} onClick={() => void reagendar()}>
@@ -326,11 +329,81 @@ function Acoes({ horario, aoMudar, compacta = false }: { horario: Horario; aoMud
           </div>
         </div>
       )}
-      {erro && (
+      {erro && modo !== 'cancelar' && (
         <div className="mt-3">
           <Falha>{erro}</Falha>
         </div>
       )}
     </div>
+  )
+}
+
+function ProximaCorrida({ telefone }: { telefone: string | null }) {
+  const api = useApi()
+  const [evento, setEvento] = useState<{ id: string; nome: string; inicio: string; vagas: number } | null>(null)
+  const [erro, setErro] = useState<string | null>(null)
+  const [feito, setFeito] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+
+  useEffect(() => {
+    void api.chamar<{ eventos: Array<{ id: string; nome: string; inicio: string; vagas: number }> }>('/api/run').then((resposta) => {
+      const agora = new Date().toISOString()
+      const proxima = (resposta.dados?.eventos ?? [])
+        .filter((item) => item.inicio >= agora)
+        .sort((a, b) => a.inicio.localeCompare(b.inicio))[0]
+      setEvento(proxima ?? null)
+    })
+  }, [api])
+
+  if (!evento) return null
+
+  return (
+    <Secao titulo="Próxima corrida" descricao="O Run Club da casa. A inscrição usa o telefone da sua ficha.">
+      <p className="text-ink">
+        {evento.nome}
+        <span className="text-muted">
+          {' '}
+          · {formatarDiaLongo(evento.inicio)} · {formatarHorario(evento.inicio)} · {evento.vagas} vagas
+        </span>
+      </p>
+      <div className="mt-4">
+        <Falha>{erro}</Falha>
+        {feito ? (
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted" aria-live="polite">
+            Você está na lista.
+          </p>
+        ) : (
+          <Button
+            variant="outline"
+            disabled={!telefone}
+            ocupado={ocupado}
+            onClick={async () => {
+              if (!telefone) return
+              setErro(null)
+              setOcupado(true)
+              const resposta = await api.chamar<{ erro?: string }>(`/api/run/${evento.id}/inscrever`, {
+                metodo: 'POST',
+                corpo: { telefone },
+              })
+              setOcupado(false)
+              if (!resposta.ok) {
+                const codigo = resposta.dados?.erro
+                setErro(
+                  codigo === 'lista_cheia'
+                    ? 'A lista fechou.'
+                    : codigo === 'ja_inscrito'
+                      ? 'Você já está nessa corrida.'
+                      : 'Não foi possível inscrever.',
+                )
+                return
+              }
+              setFeito(true)
+            }}
+          >
+            Inscrever
+          </Button>
+        )}
+      </div>
+    </Secao>
   )
 }
