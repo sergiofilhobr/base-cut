@@ -19,6 +19,7 @@ import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
 import { alterarServicosPelaEquipe, moverPelaEquipe } from "../../application/operar-agenda.ts";
 import { verificarSaude } from "../../application/verificar-saude.ts";
 import { normalizarEmail, normalizarTelefone } from "../../domain/cliente/identidade.ts";
+import { chaveDoPedido, segredoConfere } from "./entrada-whatsapp.ts";
 import { podeCancelarPeloCliente } from "../../domain/agenda/regras.ts";
 import type { Autenticacao } from "../../ports/autenticacao.ts";
 import type { Cobrancas, RepositorioCaixa } from "../../ports/caixa.ts";
@@ -46,6 +47,8 @@ export function criarAplicacao(deps: {
   relacao: RepositorioRelacao;
   urlGoogle: string;
   casa: RepositorioCasa;
+  segredoWhatsapp: string | undefined;
+  limiteWhatsapp: { aceitar(chave: string): boolean };
 }) {
   const app = new Hono();
 
@@ -249,6 +252,12 @@ export function criarAplicacao(deps: {
   });
 
   app.post("/api/whatsapp/entrada", async (c) => {
+    if (!deps.limiteWhatsapp.aceitar(chaveDoPedido((nome) => c.req.header(nome)))) {
+      return c.json({ erro: "limite" }, 429);
+    }
+    if (!segredoConfere(c.req.header("client-token"), deps.segredoWhatsapp)) {
+      return c.json({ erro: "nao_autorizado" }, 401);
+    }
     const corpo = await c.req.json().catch(() => null);
     const mensagem = lerMensagemWhatsapp(corpo);
     if (!mensagem) return c.json({ erro: "pedido_invalido" }, 400);
