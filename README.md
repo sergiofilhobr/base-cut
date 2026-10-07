@@ -1,16 +1,15 @@
 # Base Cut Barbearia
 
-O site fica em `frontend/` (Next.js 16). A agenda fica em `backend/` (API com Postgres). No local, o banco sobe com Docker.
+O site fica em `frontend/` (Next.js 16). A agenda fica em `backend/` (API com Postgres). No local, os dois sobem com Docker: a API usa a imagem do `backend/Dockerfile`.
 
 ```bash
-docker compose up -d postgres
-cp backend/.env.example backend/.env
-npm --prefix backend install
-npm run dev:backend
-npm run dev:frontend
+cp backend/.env.example .env
+docker compose up --build
 ```
 
-A API responde em `http://localhost:4000/api/health`. O site continua em `http://localhost:3000`. O Postgres do projeto escuta na porta 5434, para não disputar um Postgres que já esteja na máquina.
+A API responde em `http://localhost:4000/api/health`. O site, se for rodar junto, continua em `http://localhost:3000` com `npm run dev:frontend`. O Postgres do projeto escuta na porta 5434.
+
+Sem `CLERK_SECRET_KEY`, o container aceita `Authorization: Bearer local:equipe:admin`. Para enviar WhatsApp, preencha `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN` e `ZAPI_CLIENT_TOKEN` no `.env` e suba de novo. A resposta do cliente no WhatsApp não chega nesta máquina: a Z-API chama `POST /api/whatsapp/entrada` num endereço público.
 
 ## Entrada, cadastro e painel (`/app`)
 
