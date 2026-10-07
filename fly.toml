@@ -2,8 +2,9 @@
 app = "basecut-api"
 primary_region = "gru"
 
+# O deploy usa o diretório backend/ como contexto. O Dockerfile copia a partir daí.
 [build]
-  dockerfile = "backend/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [http_service]
   internal_port = 4000
