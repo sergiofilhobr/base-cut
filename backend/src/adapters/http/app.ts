@@ -816,7 +816,7 @@ export function criarAplicacao(deps: {
   });
 
   app.post("/api/painel/campanhas", async (c) => {
-    if (!(await membro(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
+    if (!(await admin(c, deps))) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
     if (!corpo || typeof corpo !== "object") return c.json({ erro: "pedido_invalido" }, 400);
     const dados = corpo as Record<string, unknown>;
