@@ -7,6 +7,7 @@ import { criarInterpretador } from "./adapters/eve/interpretador.ts";
 import { criarMensageiroZApi } from "./adapters/whatsapp/z-api.ts";
 import { relogioDoSistema } from "./adapters/relogio/relogio-do-sistema.ts";
 import { dispararLembretes } from "./application/avisos-whatsapp.ts";
+import { decidirAutenticacao } from "./application/modo-autenticacao.ts";
 import { criarAplicacao, semearAgenda } from "./adapters/http/app.ts";
 import { criarBanco } from "./adapters/persistencia/banco-drizzle.ts";
 
@@ -32,16 +33,18 @@ const mensageiro = criarMensageiroZApi({
 });
 const urlDoSite = process.env.SITE_URL ?? "http://localhost:3000";
 
-if (process.env.NODE_ENV === "production" && process.env.AUTH_LOCAL === "1") {
-  throw new Error("AUTH_LOCAL não vale em produção.");
+const decisao = decidirAutenticacao({
+  nodeEnv: process.env.NODE_ENV,
+  authLocal: process.env.AUTH_LOCAL,
+  clerkSecret: process.env.CLERK_SECRET_KEY,
+});
+if ("recusar" in decisao) {
+  throw new Error(decisao.recusar);
 }
-
-const autenticacaoLocal =
-  process.env.AUTH_LOCAL === "1" && !process.env.CLERK_SECRET_KEY && process.env.NODE_ENV !== "production";
-if (autenticacaoLocal) {
-  console.warn("AUTH_LOCAL=1: autenticação local, sem Clerk. Só para desenvolvimento.");
+if (decisao.local) {
+  console.warn("AUTH_LOCAL=1: autenticação local, sem Clerk. Só com NODE_ENV=development.");
 }
-const autenticacao = autenticacaoLocal
+const autenticacao = decisao.local
   ? criarAutenticacaoLocal()
   : criarAutenticacaoClerk({
       secretKey: process.env.CLERK_SECRET_KEY,

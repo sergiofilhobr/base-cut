@@ -5,5 +5,6 @@ RUN npm ci
 COPY sql ./sql
 COPY src ./src
 COPY tsconfig.json ./
+ENV NODE_ENV=production
 EXPOSE 4000
 CMD ["npx", "tsx", "src/main.ts"]
