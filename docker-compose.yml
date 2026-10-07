@@ -1,3 +1,7 @@
+# Teste local da API, no mesmo formato de um n8n em Docker.
+# O site continua fora daqui. A Z-API, se as variáveis estiverem no .env
+# ao lado deste arquivo, envia mensagem. O webhook de resposta não chega
+# em localhost: a Z-API precisa de um endereço público.
 services:
   postgres:
     image: postgres:16-alpine
@@ -15,14 +19,29 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
+  api:
     build: ./backend
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://basecut:basecut@postgres:5432/basecut
-      PORT: 4000
+      PORT: "4000"
+      # A imagem deixa NODE_ENV=production. No teste local a autenticação
+      # sem Clerk só vale em development.
+      NODE_ENV: development
+      AUTH_LOCAL: ${AUTH_LOCAL:-1}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3010}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      CLERK_ORG_ID: ${CLERK_ORG_ID:-}
+      ZAPI_INSTANCE_ID: ${ZAPI_INSTANCE_ID:-}
+      ZAPI_TOKEN: ${ZAPI_TOKEN:-}
+      ZAPI_CLIENT_TOKEN: ${ZAPI_CLIENT_TOKEN:-}
+      BRUNO_WHATSAPP: ${BRUNO_WHATSAPP:-}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      EVE_URL: ${EVE_URL:-}
+      EVE_TOKEN: ${EVE_TOKEN:-}
+      MERCADOPAGO_TOKEN: ${MERCADOPAGO_TOKEN:-}
     ports:
       - "4000:4000"
 

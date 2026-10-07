@@ -133,39 +133,3 @@ jobs:
             host=${host%%/*}
             vercel alias set "$host" base-cut-navy.vercel.app --token="$VERCEL_TOKEN" --cwd "$root" --yes
           fi
-
-  api-deploy:
-    name: Deploy da API
-    needs: [api]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Instalar flyctl
-        run: |
-          set -euo pipefail
-          version=0.4.113
-          arquivo="flyctl_${version}_Linux_x86_64.tar.gz"
-          curl -fsSL -o "/tmp/${arquivo}" "https://github.com/superfly/flyctl/releases/download/v${version}/${arquivo}"
-          echo "8b0a0056857f4f42ba35e4aa7fa8ed715f925fdf2e710a84676210fe7e0d9859  /tmp/${arquivo}" | sha256sum -c -
-          mkdir -p "$HOME/.local/bin"
-          tar -C "$HOME/.local/bin" -xzf "/tmp/${arquivo}"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: Publicar o processo na Fly
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${FLY_API_TOKEN:-}" ]; then
-            echo "Falta FLY_API_TOKEN."
-            echo "main publica em basecut-api. develop publica em basecut-api-staging."
-            exit 1
-          fi
-          # O contexto é backend/: o Dockerfile copia package-lock.json, src/ e sql/ dali.
-          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
-            flyctl deploy ./backend --remote-only --config ../fly.toml --app basecut-api
-          else
-            flyctl deploy ./backend --remote-only --config ../fly.staging.toml --app basecut-api-staging
-          fi
