@@ -8,6 +8,7 @@ import { criarMensageiroZApi } from "./adapters/whatsapp/z-api.ts";
 import { relogioDoSistema } from "./adapters/relogio/relogio-do-sistema.ts";
 import { dispararLembretes } from "./application/avisos-whatsapp.ts";
 import { criarAplicacao, semearAgenda } from "./adapters/http/app.ts";
+import { criarLimitePorJanela } from "./adapters/http/entrada-whatsapp.ts";
 import { criarBanco } from "./adapters/persistencia/banco-drizzle.ts";
 
 if (existsSync(".env")) {
@@ -65,6 +66,8 @@ const app = criarAplicacao({
   cobrancas: criarCobrancas(process.env.MERCADOPAGO_TOKEN),
   relacao: banco.relacao,
   casa: banco.casa,
+  segredoWhatsapp: process.env.ZAPI_CLIENT_TOKEN,
+  limiteWhatsapp: criarLimitePorJanela({ maximo: 30, janelaMs: 60_000, agora: () => Date.now() }),
   urlGoogle:
     process.env.GOOGLE_REVIEW_URL ??
     "https://www.google.com/search?kgmid=/g/11n3q826nd&hl=pt-BR&q=BASE+CUT+BARBEARIA&shndl=30&source=sh/x/loc/osrp/m1/3&kgs=c1b96cf83428199a&shem=shrtsdl&utm_source=shrtsdl,sh/x/loc/osrp/m1/3",
