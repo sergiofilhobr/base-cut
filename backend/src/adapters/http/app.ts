@@ -13,7 +13,6 @@ import { comprovante, fecharAtendimento } from "../../application/fechar-atendim
 import { aplicarCupom, podeReceberCampanha, pontosDaVisita, proximaRecorrencia, relatorioCsv, resumirRelatorio } from "../../domain/relacao/regras.ts";
 import type { RepositorioRelacao } from "../persistencia/relacao-postgres.ts";
 import { cobrarSinal } from "../../application/cobrar-sinal.ts";
-import { excluirFicha, exportarFicha } from "../../application/lgpd.ts";
 import { listarHorarios } from "../../application/listar-horarios.ts";
 import { marcarAgendamento } from "../../application/marcar-agendamento.ts";
 import { alterarServicosPelaEquipe, moverPelaEquipe } from "../../application/operar-agenda.ts";
@@ -216,35 +215,43 @@ export function criarAplicacao(deps: {
   });
 
   app.post("/api/privacidade/exportar", async (c) => {
-    const corpo = await c.req.json().catch(() => null);
-    const pedido = pedidoDeFicha(corpo);
-    if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
-    const resultado = await exportarFicha(deps.agenda, pedido);
-    if (!resultado.ok) return c.json({ erro: resultado.erro }, 404);
-    return c.json(resultado.ficha);
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    const [agendamentos, historico] = await Promise.all([
+      deps.agenda.agendamentosDoCliente(conta.ficha.id),
+      deps.agenda.listarAuditoria(conta.ficha.id),
+    ]);
+    return c.json({
+      nome: conta.ficha.nome,
+      telefone: conta.ficha.telefone,
+      email: conta.ficha.email,
+      agendamentos,
+      historico,
+    });
   });
 
   app.post("/api/privacidade/excluir", async (c) => {
-    const corpo = await c.req.json().catch(() => null);
-    const pedido = pedidoDeFicha(corpo);
-    if (!pedido) return c.json({ erro: "pedido_invalido" }, 400);
-    const resultado = await excluirFicha(deps.agenda, pedido);
-    if (!resultado.ok) return c.json({ erro: resultado.erro }, 404);
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
+    await deps.agenda.registrarAuditoria({
+      agendamentoId: null,
+      clienteId: conta.ficha.id,
+      acao: "exclusao",
+      ator: `cliente:${conta.ficha.telefone}`,
+    });
+    await deps.agenda.anonimizarCliente(conta.ficha.id);
     return c.json({ ok: true });
   });
 
   app.post("/api/privacidade/marketing", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
-    const pedido = pedidoDeFicha(corpo);
-    if (!pedido || !corpo || typeof corpo !== "object" || typeof (corpo as { optIn?: unknown }).optIn !== "boolean") {
+    if (!corpo || typeof corpo !== "object" || typeof (corpo as { optIn?: unknown }).optIn !== "boolean") {
       return c.json({ erro: "pedido_invalido" }, 400);
     }
-    const ficha = await exportarFicha(deps.agenda, pedido);
-    if (!ficha.ok) return c.json({ erro: ficha.erro }, 404);
-    const cliente = await deps.agenda.clientePorTelefone(pedido.telefone);
-    if (!cliente) return c.json({ erro: "nao_encontrado" }, 404);
     const optIn = (corpo as { optIn: boolean }).optIn;
-    await deps.relacao.definirOptIn(cliente.id, optIn);
+    await deps.relacao.definirOptIn(conta.ficha.id, optIn);
     return c.json({ optIn, recebeCampanha: podeReceberCampanha(optIn) });
   });
 
@@ -806,12 +813,14 @@ export function criarAplicacao(deps: {
   });
 
   app.post("/api/clientes/:id/marketing", async (c) => {
+    const conta = await fichaDaSessao(c, deps);
+    if (!conta || conta.ficha.id !== c.req.param("id")) return c.json({ erro: "nao_autorizado" }, 401);
     const corpo = await c.req.json().catch(() => null);
     if (!corpo || typeof corpo !== "object" || typeof (corpo as { optIn?: unknown }).optIn !== "boolean") {
       return c.json({ erro: "pedido_invalido" }, 400);
     }
     const optIn = (corpo as { optIn: boolean }).optIn;
-    await deps.relacao.definirOptIn(c.req.param("id"), optIn);
+    await deps.relacao.definirOptIn(conta.ficha.id, optIn);
     return c.json({ optIn, recebeCampanha: podeReceberCampanha(optIn) });
   });
 
@@ -1282,16 +1291,6 @@ function lerFechamento(corpo: unknown) {
 
 function consentiu(corpo: unknown) {
   return Boolean(corpo && typeof corpo === "object" && (corpo as { consentimento?: unknown }).consentimento === true);
-}
-
-function pedidoDeFicha(corpo: unknown) {
-  const telefone = telefoneDoCorpo(corpo);
-  if (!corpo || typeof corpo !== "object" || !telefone) return null;
-  const email = (corpo as { email?: unknown }).email;
-  if (typeof email !== "string") return null;
-  const normalizado = normalizarEmail(email);
-  if (!normalizado) return null;
-  return { telefone, email: normalizado };
 }
 
 function telefoneDoCorpo(corpo: unknown) {

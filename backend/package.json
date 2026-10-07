@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
-    "test": "tsx --test src/domain/**/*.test.ts src/application/**/*.test.ts"
+    "test": "tsx --test src/domain/**/*.test.ts src/application/**/*.test.ts src/adapters/**/*.test.ts"
   },
   "dependencies": {
     "@clerk/backend": "^3.22.0",

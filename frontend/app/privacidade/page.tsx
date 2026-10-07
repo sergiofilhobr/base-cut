@@ -1,26 +1,64 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { SessaoProvider, useApi, useSessao } from '../app/sessao'
+
+type Ficha = {
+  nome: string
+  telefone: string
+  email: string | null
+  agendamentos: unknown[]
+  historico: unknown[]
+}
 
 export default function PrivacidadePage() {
-  const [telefone, setTelefone] = useState('')
-  const [email, setEmail] = useState('')
-  const [ficha, setFicha] = useState<string | null>(null)
+  return (
+    <SessaoProvider>
+      <Conteudo />
+    </SessaoProvider>
+  )
+}
+
+function Conteudo() {
+  const sessao = useSessao()
+  const api = useApi()
+  const [ficha, setFicha] = useState<Ficha | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
 
-  async function enviar(caminho: string, extra?: Record<string, unknown>) {
+  async function exportar() {
     setAviso(null)
-    const resposta = await fetch(caminho, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ telefone, email, ...extra }),
-    })
-    const dados = await resposta.json()
-    if (!resposta.ok) {
-      setAviso('Não achamos uma ficha com esse telefone e esse e-mail.')
-      return dados
+    const resposta = await api.chamar<Ficha>('/api/privacidade/exportar', { metodo: 'POST', corpo: {} })
+    if (!resposta.ok || !resposta.dados?.nome) {
+      setAviso('Não foi possível abrir a ficha desta sessão.')
+      return
     }
-    return dados
+    setFicha(resposta.dados)
+  }
+
+  async function excluir() {
+    setAviso(null)
+    const resposta = await api.chamar<{ ok: boolean }>('/api/privacidade/excluir', { metodo: 'POST', corpo: {} })
+    if (!resposta.ok || !resposta.dados?.ok) {
+      setAviso('Não foi possível excluir a ficha.')
+      return
+    }
+    setFicha(null)
+    setAviso('Ficha excluída. Nome, telefone e e-mail saíram do cadastro.')
+    await sessao.sair()
+  }
+
+  async function sairDasCampanhas() {
+    setAviso(null)
+    const resposta = await api.chamar<{ recebeCampanha: boolean }>('/api/privacidade/marketing', {
+      metodo: 'POST',
+      corpo: { optIn: false },
+    })
+    if (!resposta.ok || resposta.dados?.recebeCampanha !== false) {
+      setAviso('Não foi possível sair das campanhas.')
+      return
+    }
+    setAviso('Você saiu das campanhas.')
   }
 
   return (
@@ -30,60 +68,47 @@ export default function PrivacidadePage() {
         <br />
         <span className="text-muted">ficha.</span>
       </h1>
-      <form className="mt-10 flex max-w-xl flex-col gap-4" onSubmit={(evento) => evento.preventDefault()}>
-        <input
-          required
-          placeholder="Telefone"
-          value={telefone}
-          onChange={(evento) => setTelefone(evento.target.value)}
-          className="border-b border-ink bg-transparent py-3 text-ink"
-        />
-        <input
-          required
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(evento) => setEmail(evento.target.value)}
-          className="border-b border-ink bg-transparent py-3 text-ink"
-        />
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="min-h-12 bg-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-paper"
-            onClick={async () => {
-              const dados = await enviar('/api/privacidade/exportar')
-              if (dados?.nome) setFicha(JSON.stringify(dados, null, 2))
-            }}
-          >
-            Exportar
-          </button>
-          <button
-            type="button"
-            className="min-h-12 border border-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-ink"
-            onClick={async () => {
-              const dados = await enviar('/api/privacidade/excluir')
-              if (dados?.ok) {
-                setFicha(null)
-                setAviso('Ficha excluída. Nome, telefone e e-mail saíram do cadastro.')
-              }
-            }}
-          >
-            Excluir
-          </button>
-          <button
-            type="button"
-            className="min-h-12 border border-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-ink"
-            onClick={async () => {
-              const dados = await enviar('/api/privacidade/marketing', { optIn: false })
-              if (dados?.recebeCampanha === false) setAviso('Você saiu das campanhas.')
-            }}
-          >
-            Sair das campanhas
-          </button>
+      {!sessao.pronto ? (
+        <p className="mt-10 text-sm text-ink">Abrindo a sessão.</p>
+      ) : !sessao.entrou ? (
+        <p className="mt-10 max-w-xl text-sm text-ink">
+          A ficha abre com a sua entrada.{' '}
+          <Link href="/app/entrar" className="underline">
+            Entrar
+          </Link>
+        </p>
+      ) : (
+        <div className="mt-10 flex max-w-xl flex-col gap-4">
+          <p className="text-sm text-ink">
+            {ficha ? `${ficha.nome}, ${ficha.telefone}` : `Sessão de ${sessao.nome ?? sessao.email ?? 'você'}.`}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="min-h-12 bg-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-paper"
+              onClick={() => void exportar()}
+            >
+              Exportar
+            </button>
+            <button
+              type="button"
+              className="min-h-12 border border-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-ink"
+              onClick={() => void excluir()}
+            >
+              Excluir
+            </button>
+            <button
+              type="button"
+              className="min-h-12 border border-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.16em] text-ink"
+              onClick={() => void sairDasCampanhas()}
+            >
+              Sair das campanhas
+            </button>
+          </div>
+          {aviso && <p className="text-sm text-ink">{aviso}</p>}
+          {ficha && <pre className="overflow-x-auto text-xs text-ink">{JSON.stringify(ficha, null, 2)}</pre>}
         </div>
-        {aviso && <p className="text-sm text-ink">{aviso}</p>}
-        {ficha && <pre className="overflow-x-auto text-xs text-ink">{ficha}</pre>}
-      </form>
+      )}
     </div>
   )
 }
